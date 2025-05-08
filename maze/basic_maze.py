@@ -1,4 +1,3 @@
-import logging
 from enum import Enum, IntEnum
 import numpy as np
 from maze.maze_renderer import MazeRenderer
@@ -8,7 +7,7 @@ class CellType(IntEnum):
     WALL = 1
     AGENT = 2
 
-class Action(Enum):
+class Action(IntEnum):
     UP = 0
     DOWN = 1
     LEFT = 2
@@ -37,14 +36,15 @@ class BasicMaze:
     penalty_move = -0.05
     penalty_already_visited = -0.1
     penalty_impossible_move = -0.5
-    minimum_reward = -5.0
 
-    def __init__(self, maze, start_cell=(0, 0), goal_cell=None):
+    def __init__(self, maze, start_cell=(0, 0), goal_cell=None, max_steps=10000, render_mode=Render.NOTHING):
         self._original_maze = maze
         self.maze = np.copy(maze)
         self.start_cell = start_cell
         nrows, ncols = self.maze.shape
         self.goal_cell = goal_cell if goal_cell else (nrows - 1, ncols - 1)
+        self.max_steps = max_steps
+        self.render_mode = render_mode
 
         self.empty_cells = [(r, c) for r in range(nrows) for c in range(ncols) if self.maze[r][c] == CellType.EMPTY]
         if self.goal_cell in self.empty_cells:
@@ -67,19 +67,24 @@ class BasicMaze:
         self.reset(self.start_cell)
 
     def reset(self, start_cell):
+        self.steps = 0
         self.previous_position = self.agent_position = start_cell
         self.maze = np.copy(self._original_maze)
         row, col = start_cell
         self.maze[row][col] = CellType.AGENT
-        self.total_reward = 0.0
+        self.total_reward_environment = 0.0
         self.visited = set()
         self.visited.add(start_cell)
+        return self.state()
 
     def step(self, action):
         reward = self.execute(action)
-        self.total_reward += reward
+        self.total_reward_environment += reward
+        self.steps += 1
         status = self.status()
         state = self.state()
+        if self.render_mode == Render.MOVES:
+            self.render()
         return state, reward, status
 
     def execute(self, action):
@@ -90,7 +95,9 @@ class BasicMaze:
         if not self.is_valid((new_row, new_col)):
             return self.penalty_impossible_move
 
+        self.maze[self.agent_position] = CellType.EMPTY
         self.agent_position = (new_row, new_col)
+        self.maze[self.agent_position] = CellType.AGENT
 
         if (new_row, new_col) in self.visited:
             return self.penalty_already_visited
@@ -117,7 +124,7 @@ class BasicMaze:
     def status(self):
         if self.agent_position == self.goal_cell:
             return Status.SUCCESS
-        elif self.total_reward < self.minimum_reward:
+        if self.steps >= self.max_steps:
             return Status.FAILURE
         else:
             return Status.IN_PROGRESS
