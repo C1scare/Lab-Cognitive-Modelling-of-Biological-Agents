@@ -1,5 +1,5 @@
 from enum import Enum, IntEnum
-from typing import Tuple, Optional, Dict, Set
+from typing import Tuple, Optional, Dict, Set, List
 import numpy as np
 import numpy.typing as npt
 from maze.maze_renderer import MazeRenderer
@@ -197,3 +197,22 @@ class BasicMaze:
 
         if self.start_cell == self.goal_cell:
             raise ValueError("The agent cannot start on the goal cell.")
+        
+        sr, sc = self.start_cell
+        start_neighbors: List[Tuple[int, int]] = [(sr - 1, sc), (sr + 1, sc), (sr, sc - 1), (sr, sc + 1)]
+        valid_start_neighbor_exists: bool = any(
+            0 <= r < nrows and 0 <= c < ncols and self.maze[r][c] != CellType.WALL
+            for r, c in start_neighbors
+        )
+        if not valid_start_neighbor_exists:
+            raise ValueError("Start cell must have at least one accessible neighboring cell.")
+        
+        gr, gc = self.goal_cell
+        goal_neighbors: List[Tuple[int, int]] = [(gr - 1, gc), (gr + 1, gc), (gr, gc - 1), (gr, gc + 1)]
+        valid_goal_neighbor_exists: bool = any(
+            0 <= r < nrows and 0 <= c < ncols and self.maze[r][c] != CellType.WALL
+            for r, c in goal_neighbors
+        )
+        if not valid_goal_neighbor_exists:
+            raise ValueError("Goal cell must have at least one accessible neighboring cell.")
+
