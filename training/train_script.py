@@ -1,6 +1,10 @@
 from maze.basic_maze import GameStatus
 
-def train_agent(env, agent, episodes=500):
+def train_agent(
+    env, 
+    agent, 
+    episodes: int = 500,
+) -> None:
     for episode in range(episodes):
         state = env.reset(env.start_cell)
         total_reward = 0

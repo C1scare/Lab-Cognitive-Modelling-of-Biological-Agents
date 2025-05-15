@@ -13,7 +13,7 @@ if __name__ == "__main__":
     ])
 
     env = BasicMaze(maze=maze_array, start_cell=(0, 0), goal_cell=(3, 3))
-    agent = QLearningAgent(maze_shape=env.get_shape(), n_actions=4)
+    agent = QLearningAgent(maze_shape=env.get_shape(), action_Space=env.actions)
 
     train_agent(env, agent, episodes=1000)
 
