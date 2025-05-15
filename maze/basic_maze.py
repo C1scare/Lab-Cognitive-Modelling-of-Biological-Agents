@@ -15,12 +15,6 @@ class Action(IntEnum):
     LEFT = 2
     RIGHT = 3
 
-# TODO: actually use this
-class Render(Enum):
-    NOTHING = 0
-    TRAINING = 1
-    MOVES = 2
-
 class GameStatus(Enum):
     SUCCESS = 0
     FAILURE = 1
@@ -50,8 +44,7 @@ class BasicMaze:
         maze: npt.NDArray[np.int_],
         start_cell: Tuple[int, int] = (0, 0),
         goal_cell: Optional[Tuple[int, int]] = None,
-        max_steps: int = 10000,
-        render_mode: Render = Render.NOTHING
+        max_steps: int = 10000
     ) -> None:
         """
         Initialize the maze environment.
@@ -61,7 +54,6 @@ class BasicMaze:
             start_cell: Starting coordinates of the agent.
             goal_cell: Goal coordinates (defaults to bottom-right).
             max_steps: Maximum allowed steps before failure.
-            render_mode: Rendering behavior (currently unused).
         """
         self._original_maze: npt.NDArray[np.int_] = maze
         self.maze: npt.NDArray[np.int_] = np.copy(maze)
@@ -71,7 +63,6 @@ class BasicMaze:
         self.max_steps: int = max_steps
         self._validate_and_set_cells(nrows, ncols)
 
-        self.render_mode: Render = render_mode
         self.renderer: MazeRenderer = MazeRenderer(
             agent_color='dodgerblue',
             goal_color='gold',
