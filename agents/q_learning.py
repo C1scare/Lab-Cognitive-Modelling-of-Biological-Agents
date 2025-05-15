@@ -2,8 +2,9 @@ import numpy as np
 import random
 from typing import Tuple, Sequence
 from maze.basic_maze import Action
+from agents.base_agent import BaseAgent
 
-class QLearningAgent:
+class QLearningAgent(BaseAgent):
     """
     A simple Q-learning agent for grid-based environments like BasicMaze.
 

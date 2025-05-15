@@ -2,10 +2,11 @@ from maze.basic_maze import GameStatus
 from typing import List, Tuple
 import matplotlib.pyplot as plt
 from maze.basic_maze import BasicMaze, Action, GameStatus
+from agents.base_agent import BaseAgent
 
 def train_agent(
     env: BasicMaze, 
-    agent, 
+    agent: BaseAgent, 
     episodes: int = 500,
     decay_epsilon: bool = True,
 ) -> List[float]:
