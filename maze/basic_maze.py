@@ -27,6 +27,11 @@ class GameStatus(Enum):
     IN_PROGRESS = 2
 
 class BasicMaze:
+    """
+    A simple grid-based maze environment for agent navigation and reinforcement learning.
+    The agent moves within a fixed-size maze with walls, empty cells, and a goal.
+    """
+
     actions: Dict[Action, Tuple[int, int]] = {
         Action.UP: (-1, 0),
         Action.DOWN: (1, 0),
@@ -34,8 +39,7 @@ class BasicMaze:
         Action.RIGHT: (0, 1)
     }
 
-# Constants for rewards and penalties
-# TODO: make these configurable form the outside
+    # Reward configuration
     reward_goal: float = 10.0
     penalty_move: float = -0.05
     penalty_already_visited: float = -0.1
@@ -49,7 +53,16 @@ class BasicMaze:
         max_steps: int = 10000,
         render_mode: Render = Render.NOTHING
     ) -> None:
-        
+        """
+        Initialize the maze environment.
+
+        Args:
+            maze: A 2D numpy array representing the maze layout.
+            start_cell: Starting coordinates of the agent.
+            goal_cell: Goal coordinates (defaults to bottom-right).
+            max_steps: Maximum allowed steps before failure.
+            render_mode: Rendering behavior (currently unused).
+        """
         self._original_maze: npt.NDArray[np.int_] = maze
         self.maze: npt.NDArray[np.int_] = np.copy(maze)
         self.start_cell: Tuple[int, int] = start_cell
@@ -67,6 +80,15 @@ class BasicMaze:
         self.reset(self.start_cell)
 
     def reset(self, start_cell: Tuple[int, int]) -> Tuple[int, int]:
+        """
+        Reset the maze to its initial state and place the agent.
+
+        Args:
+            start_cell: The new starting position for the agent.
+
+        Returns:
+            The initial agent position.
+        """
         self.steps: int = 0
         self.agent_position: Tuple[int, int] = start_cell
         self.maze = np.copy(self._original_maze)
@@ -75,22 +97,40 @@ class BasicMaze:
         self.total_reward_environment: float = 0.0
         self.visited: Set[Tuple[int, int]] = {start_cell}
         return self.agent_position
-    
+
     def get_shape(self) -> Tuple[int, int]:
+        """Return the shape of the maze."""
         return self.maze.shape
 
     def game_status(self) -> GameStatus:
+        """
+        Check the current game status.
+
+        Returns:
+            GameStatus.SUCCESS if goal reached,
+            GameStatus.FAILURE if max steps exceeded,
+            GameStatus.IN_PROGRESS otherwise.
+        """
         if self.agent_position == self.goal_cell:
             return GameStatus.SUCCESS
         if self.steps >= self.max_steps:
             return GameStatus.FAILURE
-        else:
-            return GameStatus.IN_PROGRESS
+        return GameStatus.IN_PROGRESS
 
     def render(self) -> None:
+        """Render the maze using the MazeRenderer."""
         self.renderer.render(self, self.agent_position, reward_positions=[self.goal_cell])
 
     def step(self, action: Action) -> Tuple[Tuple[int, int], float, GameStatus]:
+        """
+        Perform a step in the maze given an action.
+
+        Args:
+            action: The movement direction.
+
+        Returns:
+            A tuple of (new agent position, reward received, current game status).
+        """
         step_reward: float = self._execute_and_reward(action)
         self.total_reward_environment += step_reward
         self.steps += 1
@@ -98,7 +138,16 @@ class BasicMaze:
         new_agent_position: Tuple[int, int] = self.agent_position
         return new_agent_position, step_reward, game_status
 
-    def _execute_and_reward(self, action) -> float:
+    def _execute_and_reward(self, action: Action) -> float:
+        """
+        Move the agent and return the resulting reward.
+
+        Args:
+            action: The action to apply.
+
+        Returns:
+            The reward from taking the action.
+        """
         row, col = self.agent_position
         delta_row, delta_col = self.actions[action]
         new_row, new_col = row + delta_row, col + delta_col
@@ -110,7 +159,7 @@ class BasicMaze:
         self.agent_position = (new_row, new_col)
         self.maze[self.agent_position] = CellType.AGENT
 
-        if (new_row, new_col) in self.visited:
+        if self.agent_position in self.visited:
             return self.penalty_already_visited
 
         self.visited.add(self.agent_position)
@@ -121,14 +170,29 @@ class BasicMaze:
         return self.penalty_move
 
     def _is_valid(self, position: Tuple[int, int]) -> bool:
+        """
+        Check if a position is a valid, non-wall cell within bounds.
+
+        Args:
+            position: Cell to check.
+
+        Returns:
+            True if position is valid; False otherwise.
+        """
         r, c = position
         return 0 <= r < self.maze.shape[0] and 0 <= c < self.maze.shape[1] and self.maze[r][c] != CellType.WALL
-    
+
     def _validate_and_set_cells(self, nrows: int, ncols: int) -> None:
+        """
+        Validate that the start and goal cells are on valid empty spaces.
+
+        Raises:
+            ValueError: If start or goal are invalid positions.
+        """
         self.empty_cells: list[Tuple[int, int]] = [
-            (r, c) 
-            for r in range(nrows) 
-            for c in range(ncols) 
+            (r, c)
+            for r in range(nrows)
+            for c in range(ncols)
             if self.maze[r][c] == CellType.EMPTY
         ]
         if self.goal_cell in self.empty_cells:
