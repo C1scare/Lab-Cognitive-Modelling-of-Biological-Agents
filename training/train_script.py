@@ -1,9 +1,10 @@
 from maze.basic_maze import GameStatus
-from typing import List
+from typing import List, Tuple
 import matplotlib.pyplot as plt
+from maze.basic_maze import BasicMaze, Action, GameStatus
 
 def train_agent(
-    env, 
+    env: BasicMaze, 
     agent, 
     episodes: int = 500,
     decay_epsilon: bool = True,
@@ -28,10 +29,13 @@ def train_agent(
         total_reward = 0
 
         while True:
-            action = agent.choose_action(state)
+            action: Action = agent.choose_action(state)
+            next_state: Tuple[int, int]
+            reward: float
+            status: GameStatus 
             next_state, reward, status = env.step(action)
             agent.learn(state, action, reward, next_state)
-            state = next_state
+            state: Tuple[int, int] = next_state
             total_reward += reward
 
             if status != GameStatus.IN_PROGRESS:
