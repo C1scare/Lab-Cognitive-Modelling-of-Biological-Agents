@@ -13,12 +13,13 @@ class Action(IntEnum):
     LEFT = 2
     RIGHT = 3
 
+# TODO: actually use this
 class Render(Enum):
     NOTHING = 0
     TRAINING = 1
     MOVES = 2
 
-class Status(Enum):
+class GameStatus(Enum):
     SUCCESS = 0
     FAILURE = 1
     IN_PROGRESS = 2
@@ -32,6 +33,8 @@ class BasicMaze:
         Action.RIGHT: (0, 1)
     }
 
+# Constants for rewards and penalties
+# TODO: make these configurable form the outside
     reward_goal = 10.0
     penalty_move = -0.05
     penalty_already_visited = -0.1
@@ -44,21 +47,9 @@ class BasicMaze:
         nrows, ncols = self.maze.shape
         self.goal_cell = goal_cell if goal_cell else (nrows - 1, ncols - 1)
         self.max_steps = max_steps
+        self._validate_and_set_cells(nrows, ncols)
+
         self.render_mode = render_mode
-
-        self.empty_cells = [(r, c) for r in range(nrows) for c in range(ncols) if self.maze[r][c] == CellType.EMPTY]
-        if self.goal_cell in self.empty_cells:
-            self.empty_cells.remove(self.goal_cell)
-
-        if self.maze[self.goal_cell] == CellType.WALL:
-            raise ValueError("Goal cell cannot be inside a wall.")
-
-        if self.start_cell not in self.empty_cells:
-            raise ValueError("The agent must start on an empty cell.")
-
-        if self.start_cell == self.goal_cell:
-            raise ValueError("The agent cannot start on the goal cell.")
-
         self.renderer = MazeRenderer(
             agent_color='dodgerblue',
             goal_color='gold',
@@ -68,31 +59,43 @@ class BasicMaze:
 
     def reset(self, start_cell):
         self.steps = 0
-        self.previous_position = self.agent_position = start_cell
+        self.agent_position = start_cell
         self.maze = np.copy(self._original_maze)
         row, col = start_cell
         self.maze[row][col] = CellType.AGENT
         self.total_reward_environment = 0.0
         self.visited = set()
         self.visited.add(start_cell)
-        return self.state()
+        return self.agent_position
+    
+    def get_shape(self):
+        return self.maze.shape
+
+    def game_status(self):
+        if self.agent_position == self.goal_cell:
+            return GameStatus.SUCCESS
+        if self.steps >= self.max_steps:
+            return GameStatus.FAILURE
+        else:
+            return GameStatus.IN_PROGRESS
+
+    def render(self):
+        self.renderer.render(self, self.agent_position, reward_positions=[self.goal_cell])
 
     def step(self, action):
-        reward = self.execute(action)
-        self.total_reward_environment += reward
+        step_reward = self._execute_and_reward(action)
+        self.total_reward_environment += step_reward
         self.steps += 1
-        status = self.status()
-        state = self.state()
-        if self.render_mode == Render.MOVES:
-            self.render()
-        return state, reward, status
+        game_status = self.game_status()
+        new_agent_position = self.agent_position
+        return new_agent_position, step_reward, game_status
 
-    def execute(self, action):
+    def _execute_and_reward(self, action):
         row, col = self.agent_position
         delta_row, delta_col = self.actions[action]
         new_row, new_col = row + delta_row, col + delta_col
 
-        if not self.is_valid((new_row, new_col)):
+        if not self._is_valid((new_row, new_col)):
             return self.penalty_impossible_move
 
         self.maze[self.agent_position] = CellType.EMPTY
@@ -109,28 +112,20 @@ class BasicMaze:
 
         return self.penalty_move
 
-    def is_valid(self, position):
+    def _is_valid(self, position):
         r, c = position
         return 0 <= r < self.maze.shape[0] and 0 <= c < self.maze.shape[1] and self.maze[r][c] != CellType.WALL
+    
+    def _validate_and_set_cells(self, nrows, ncols):
+        self.empty_cells = [(r, c) for r in range(nrows) for c in range(ncols) if self.maze[r][c] == CellType.EMPTY]
+        if self.goal_cell in self.empty_cells:
+            self.empty_cells.remove(self.goal_cell)
 
-    def get_shape(self):
-        return self.maze.shape
+        if self.maze[self.goal_cell] == CellType.WALL:
+            raise ValueError("Goal cell cannot be inside a wall.")
 
-    def get_reward_at(self, position):
-        if position == self.goal_cell:
-            return self.reward_goal
-        return None
+        if self.start_cell not in self.empty_cells:
+            raise ValueError("The agent must start on an empty cell.")
 
-    def status(self):
-        if self.agent_position == self.goal_cell:
-            return Status.SUCCESS
-        if self.steps >= self.max_steps:
-            return Status.FAILURE
-        else:
-            return Status.IN_PROGRESS
-
-    def state(self):
-        return np.array([*self.agent_position])
-
-    def render(self):
-        self.renderer.render(self, self.agent_position, reward_positions=[self.goal_cell])
+        if self.start_cell == self.goal_cell:
+            raise ValueError("The agent cannot start on the goal cell.")

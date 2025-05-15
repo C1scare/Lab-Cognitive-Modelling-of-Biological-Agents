@@ -1,5 +1,5 @@
 import numpy as np
-from maze.basic_maze import BasicMaze, Status
+from maze.basic_maze import BasicMaze, GameStatus
 from agents.q_learning import QLearningAgent
 from training.train_script import train_agent
 import matplotlib.pyplot as plt
@@ -31,7 +31,7 @@ while True:
     env.render()
     plt.pause(0.5)  # Wait briefly to animate
 
-    if status != Status.IN_PROGRESS:
+    if status != GameStatus.IN_PROGRESS:
         print("Test run ended with status:", status)
         break
 

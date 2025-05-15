@@ -1,4 +1,4 @@
-from maze.basic_maze import Status
+from maze.basic_maze import GameStatus
 
 def train_agent(env, agent, episodes=500):
     for episode in range(episodes):
@@ -11,7 +11,7 @@ def train_agent(env, agent, episodes=500):
             agent.learn(state, action, reward, next_state)
             state = next_state
             total_reward += reward
-            if status != Status.IN_PROGRESS:
+            if status != GameStatus.IN_PROGRESS:
                 break
 
         if episode % 50 == 0:
