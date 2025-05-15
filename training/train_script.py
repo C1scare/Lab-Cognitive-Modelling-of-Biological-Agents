@@ -4,6 +4,7 @@ def train_agent(
     env, 
     agent, 
     episodes: int = 500,
+    decay_epsilon: bool = True,
 ) -> None:
     for episode in range(episodes):
         state = env.reset(env.start_cell)
@@ -17,6 +18,9 @@ def train_agent(
             total_reward += reward
             if status != GameStatus.IN_PROGRESS:
                 break
+        
+        if decay_epsilon:
+            agent.decay_epsilon()
 
         if episode % 50 == 0:
             print(f"Episode {episode}, Total Reward: {total_reward:.2f}, Status: {status.name}")

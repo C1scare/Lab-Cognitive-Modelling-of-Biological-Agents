@@ -41,3 +41,6 @@ class QLearningAgent:
         td_target = reward + self.gamma * np.max(self.q_table[next_row, next_col])
         td_error = td_target - self.q_table[row, col, action_id]
         self.q_table[row, col, action_id] += self.alpha * td_error
+
+    def decay_epsilon(self, decay_rate: float = 0.99, min_epsilon: float = 0.01) -> None:
+        self.epsilon = max(min_epsilon, self.epsilon * decay_rate)
