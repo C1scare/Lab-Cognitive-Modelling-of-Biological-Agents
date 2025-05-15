@@ -1,11 +1,13 @@
 from maze.basic_maze import GameStatus
+from typing import List
+import matplotlib.pyplot as plt
 
 def train_agent(
     env, 
     agent, 
     episodes: int = 500,
     decay_epsilon: bool = True,
-) -> None:
+) -> List[float]:
     """
     Train a reinforcement learning agent in a given environment.
 
@@ -14,7 +16,13 @@ def train_agent(
         agent: The agent with `choose_action()`, `learn()`, and optionally `decay_epsilon()` methods.
         episodes: Number of training episodes to run.
         decay_epsilon: Whether to decay the agent's exploration rate after each episode.
+    
+    Returns:
+        List of total rewards received in each episode.
+    
     """
+    episode_rewards: List[float] = []
+
     for episode in range(episodes):
         state = env.reset(env.start_cell)
         total_reward = 0
@@ -32,5 +40,24 @@ def train_agent(
         if decay_epsilon:
             agent.decay_epsilon()
 
+        episode_rewards.append(total_reward)
+
         if episode % 50 == 0:
             print(f"Episode {episode}, Total Reward: {total_reward:.2f}, Status: {status.name}")
+
+    return episode_rewards
+
+def plot_rewards(rewards: List[float]) -> None:
+    """
+    Plot the total rewards received in each episode.
+
+    Args:
+        rewards: List of total rewards received in each episode.
+    """
+
+    plt.plot(rewards)
+    plt.xlabel('Episode')
+    plt.ylabel('Total Reward')
+    plt.title('Training Rewards Over Episodes')
+    plt.grid(True)
+    plt.show()  
