@@ -42,8 +42,9 @@ def train_agent(
             if status != GameStatus.IN_PROGRESS:
                 break
 
-        if decay_epsilon:
-            agent.decay_epsilon()
+        if hasattr(agent, "decay_epsilon"):
+            if decay_epsilon:
+                agent.decay_epsilon()
 
         episode_rewards.append(total_reward)
 
