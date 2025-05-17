@@ -3,16 +3,17 @@ from maze.basic_maze import BasicMaze, GameStatus
 from agents.q_learning import QLearningAgent
 from training.train_script import train_agent, plot_rewards
 import matplotlib.pyplot as plt
+from maze.maze_definitions import mazes
 
 if __name__ == "__main__":
-    maze_array = np.array([
-        [0, 0, 1, 0],
-        [1, 0, 1, 0],
-        [0, 0, 0, 0],
-        [0, 1, 1, 0]
-    ])
 
-    env = BasicMaze(maze=maze_array, start_cell=(0, 0), goal_cell=(3, 3))
+    maze_info = mazes["maze_01"]
+    maze_array = maze_info["maze"]
+    start_cells = maze_info["start_cells"]
+    start_cell = start_cells[5]
+    goal_cell = maze_info["goal_cell"]
+
+    env = BasicMaze(maze=maze_array, start_cell=start_cell, goal_cell=goal_cell)
     agent = QLearningAgent(maze_shape=env.get_shape(), action_Space=env.actions)
 
     rewards = train_agent(env, agent, episodes=1000)
