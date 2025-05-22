@@ -1,5 +1,7 @@
 {
     "typeCheckingMode": "strict",
+    
+    "_comment": "Disabling unknown member type due to matplotlib imshow and similar functions",
     "reportMissingTypeStubs": false,
     "reportUnknownMemberType": "none",
 }
