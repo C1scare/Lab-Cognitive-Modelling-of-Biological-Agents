@@ -91,7 +91,8 @@ class BasicMaze:
 
     def get_shape(self) -> Tuple[int, int]:
         """Return the shape of the maze."""
-        return self.maze.shape
+        shape = self.maze.shape
+        return (int(shape[0]), int(shape[1]))
 
     def game_status(self) -> GameStatus:
         """
@@ -110,7 +111,8 @@ class BasicMaze:
 
     def render(self) -> None:
         """Render the maze using the MazeRenderer."""
-        self.renderer.render(self, self.agent_position, reward_positions=[self.goal_cell])
+        #self.renderer.render(self, self.agent_position, reward_positions=[self.goal_cell])
+        self.renderer.render_maze(self.maze, agent_position=self.agent_position, reward_positions=[self.goal_cell], visited=self.visited)
 
     def step(self, action: Action) -> Tuple[Tuple[int, int], float, GameStatus]:
         """
@@ -128,6 +130,15 @@ class BasicMaze:
         game_status: GameStatus = self.game_status()
         new_agent_position: Tuple[int, int] = self.agent_position
         return new_agent_position, step_reward, game_status
+
+    def get_action_space(self) -> List[Action]:
+        """
+        Get the available actions in the maze.
+
+        Returns:
+            A list of possible actions.
+        """
+        return list(self.actions.keys())
 
     def _execute_and_reward(self, action: Action) -> float:
         """

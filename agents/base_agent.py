@@ -52,3 +52,10 @@ class BaseAgent(ABC):
             next_state: The resulting state.
         """
         pass
+
+    def decay_epsilon(self) -> None:
+        """
+        Decay the exploration rate (if applicable).
+        This method can be overridden by subclasses if they implement epsilon decay.
+        """
+        pass

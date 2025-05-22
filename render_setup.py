@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 from maze.maze_definitions import mazes
 from maze.maze_renderer import MazeRenderer
 
-maze_name = "maze_01"  # Change this to the desired maze name
+maze_name = "maze_26b"  # Change this to the desired maze name
 maze_info = mazes[maze_name]
 maze_array = maze_info["maze"]
 goal = maze_info["goal_cell"]

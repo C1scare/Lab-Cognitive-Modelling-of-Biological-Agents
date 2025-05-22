@@ -1,7 +1,7 @@
-from typing import Dict
+from typing import Dict, Any
 import numpy as np
 
-MazeInformation = Dict[str, object]
+MazeInformation = Dict[str, Any]
 
 mazes: Dict[str, MazeInformation] = {
     "Test": {

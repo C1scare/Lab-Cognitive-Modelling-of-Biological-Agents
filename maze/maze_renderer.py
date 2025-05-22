@@ -1,23 +1,37 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import numpy.typing as npt
 from matplotlib.colors import to_rgba
+from typing import List, Optional, Tuple, Set
 
 class MazeRenderer:
-    def __init__(self, agent_color='dodgerblue', goal_color='gold', show_grid=True):
+    def __init__(
+        self,
+        agent_color: str ='dodgerblue',
+        goal_color: str ='gold',
+        show_grid: bool =True
+    ) -> None:
         self.agent_color = to_rgba(agent_color)
         self.goal_color = to_rgba(goal_color)
         self.show_grid = show_grid
         self._img_artist = None  # For efficient rendering updates
 
-    def render(self, env, agent_position, reward_positions=None):
-        # Original rendering logic for dynamic agent movement
-        self._render_maze(env.maze, agent_position, reward_positions, visited=getattr(env, 'visited', set()))
+    def render_setup(
+        self, 
+        maze: npt.NDArray[np.int_], 
+        start_positions: List[Tuple[int, int]],
+        goal_position: Tuple[int, int]
+        ):
+        self.render_maze(maze, agent_position=None, reward_positions=[goal_position], start_positions=start_positions)
 
-    def render_setup(self, maze, start_positions, goal_position):
-        # New static rendering method for maze setup
-        self._render_maze(maze, agent_position=None, reward_positions=[goal_position], start_positions=start_positions)
-
-    def _render_maze(self, maze, agent_position=None, reward_positions=None, visited=set(), start_positions=None):
+    def render_maze(
+        self, 
+        maze: npt.NDArray[np.int_], 
+        agent_position: Optional[Tuple[int, int]] = None, 
+        reward_positions: Optional[List[Tuple[int, int]]] = None, 
+        visited: Set[Tuple[int, int]] = set(), 
+        start_positions: Optional[List[Tuple[int, int]]] = None
+        ) -> None:
         nrows, ncols = maze.shape
         canvas = np.ones((nrows, ncols, 3))
 
