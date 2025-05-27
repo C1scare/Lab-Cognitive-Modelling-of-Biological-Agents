@@ -35,11 +35,12 @@ def train_agent(
             reward: float
             status: GameStatus 
             next_state, reward, status = env.step(action)
-            agent.learn(state, action, reward, next_state)
+            done = status != GameStatus.IN_PROGRESS
+            agent.learn(state, action, reward, next_state, done)
             state: Tuple[int, int] = next_state
             total_reward += reward
 
-            if status != GameStatus.IN_PROGRESS:
+            if done:
                 break
 
         if hasattr(agent, "decay_epsilon"):
