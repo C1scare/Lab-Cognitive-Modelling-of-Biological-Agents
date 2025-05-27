@@ -16,13 +16,13 @@ if __name__ == "__main__":
 
     env = BasicMaze(maze=maze_array, start_cell=(0, 0), goal_cell=(3, 3))
 
-    AgentType = AgentType.BAYESIAN_Q_LEARNING  # Change to AgentType.Q_LEARNING for Bayesian Q-learning
+    agent_type = AgentType.BAYESIAN_Q_LEARNING  # Change to AgentType.Q_LEARNING for Bayesian Q-learning
     agent = None
 
-    if AgentType.Q_LEARNING == AgentType.Q_LEARNING:
+    if agent_type == AgentType.Q_LEARNING:
         agent = QLearningAgent(maze_shape=env.get_shape(), action_Space=env.actions)
     
-    elif AgentType.Q_LEARNING == AgentType.BAYESIAN_Q_LEARNING:
+    elif agent_type == AgentType.BAYESIAN_Q_LEARNING:
         agent = BayesianQLearningAgent(
             maze_shape=env.get_shape(),
             action_space=env.actions,
