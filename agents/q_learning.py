@@ -3,6 +3,7 @@ import random
 from typing import Tuple, Sequence
 from maze.basic_maze import Action
 from agents.base_agent import BaseAgent
+from agents.hyperparameter import Hyperparameter
 
 class QLearningAgent(BaseAgent):
     """
@@ -19,10 +20,12 @@ class QLearningAgent(BaseAgent):
     def __init__(
         self, 
         maze_shape: Tuple[int, int], 
-        action_Space: Sequence[Action], 
-        alpha: float = 0.1, 
-        gamma: float = 0.99, 
-        epsilon: float = 0.2
+        action_Space: Sequence[Action],
+        hyperparameters: Hyperparameter = Hyperparameter(
+            alpha=0.1, 
+            gamma=0.99, 
+            epsilon=0.2
+        )
     ) -> None:
         """
         Initialize the Q-learning agent with an empty Q-table.
@@ -35,9 +38,13 @@ class QLearningAgent(BaseAgent):
             epsilon: Initial exploration rate.
         """
         self.q_table = np.zeros((*maze_shape, len(action_Space)))
-        self.alpha = alpha
-        self.gamma = gamma
-        self.epsilon = epsilon
+        if (hyperparameters.alpha is None or
+            hyperparameters.gamma is None or
+            hyperparameters.epsilon is None):
+            raise ValueError("Hyperparameters must be provided with valid values.")
+        self.alpha = hyperparameters.alpha
+        self.gamma = hyperparameters.gamma
+        self.epsilon = hyperparameters.epsilon
         self.action_space = list(action_Space)
 
     def choose_action(self, state: Tuple[int, int]) -> Action:

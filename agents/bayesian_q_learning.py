@@ -3,6 +3,7 @@ import random
 from typing import Tuple, Sequence
 from maze.basic_maze import Action
 from agents.base_agent import BaseAgent
+from agents.hyperparameter import Hyperparameter
 
 
 class BayesianQLearningAgent(BaseAgent):
@@ -21,12 +22,13 @@ class BayesianQLearningAgent(BaseAgent):
         self, 
         maze_shape: Tuple[int, int], 
         action_space: Sequence[Action], 
-        alpha: float = 0.1, 
-        gamma: float = 0.99, 
-        epsilon: float = 0.2,
-        mu_init: float = 0.0,
-        sigma_sq_init: float = 2.0,
-        obs_noise_variance: float = 0.1
+        hyperparameters: Hyperparameter = Hyperparameter(
+            gamma=0.99,
+            epsilon=0.2,
+            mu_init=0.0,
+            sigma_sq_init=2.0,
+            obs_noise_variance=0.1
+        )
     ) -> None:
         """
         Initialize the Bayesian Q-learning agent with an empty Q-table.
@@ -34,7 +36,6 @@ class BayesianQLearningAgent(BaseAgent):
         Args:
             maze_shape: Dimensions of the maze grid.
             action_space: List of possible actions (e.g., UP, DOWN, etc.).
-            alpha: Learning rate for Q-value updates.
             gamma: Discount factor for future rewards.
             epsilon: Initial exploration rate.
             mu_init (float): Initial mean for the Gaussian Q-value distributions.
@@ -43,20 +44,27 @@ class BayesianQLearningAgent(BaseAgent):
             obs_noise_variance (float): Assumed variance of the Bellman target 'y'.
                                         A smaller value means higher confidence in each new target.
         """
+        if(hyperparameters.gamma is None or
+           hyperparameters.epsilon is None or
+           hyperparameters.mu_init is None or
+           hyperparameters.sigma_sq_init is None or
+           hyperparameters.obs_noise_variance is None):
+            raise ValueError("Hyperparameters must be provided with valid values.")
+
         self.q_dist_table = np.zeros((*maze_shape, len(action_space), 2))  # [mean, variance]
-        self.q_dist_table[:, :, :, 0] = mu_init  # Initialize means
-        self.q_dist_table[:, :, :, 1] = sigma_sq_init  # Initialize variances
-        self.alpha = alpha
-        self.gamma = gamma
-        self.epsilon = epsilon
+        self.q_dist_table[:, :, :, 0] = hyperparameters.mu_init  # Initialize means
+        self.q_dist_table[:, :, :, 1] = hyperparameters.sigma_sq_init  # Initialize variances
+        self.alpha = hyperparameters.alpha
+        self.gamma = hyperparameters.gamma
+        self.epsilon = hyperparameters.epsilon
         self.action_space = list(action_space)
-        if sigma_sq_init <= 0:
+        if hyperparameters.sigma_sq_init <= 0:
             raise ValueError("Initial variance (sigma_sq_init) must be positive.")
         
-        if obs_noise_variance <= 0:
+        if hyperparameters.obs_noise_variance <= 0:
             raise ValueError("Observation noise variance must be positive.")
         # Precision of the observation noise in the Bellman update
-        self.tau_obs = 1.0 / obs_noise_variance
+        self.tau_obs = 1.0 / hyperparameters.obs_noise_variance
 
     def thompson_sample_action(self, state: Tuple[int, int]) -> Action:
         """
@@ -92,12 +100,12 @@ class BayesianQLearningAgent(BaseAgent):
             return random.choice(self.action_space)
         return self.thompson_sample_action(state)
 
-    def update_q_distribution(self,
+    def calculate_bellman_target(self,
                               state: Tuple[int, int],
                               action:Action,
                               reward: float,
                               next_state: Tuple[int, int],
-                              done:bool) -> None:
+                              done:bool) -> Tuple[float, float, float]:
         """
         Updates the Gaussian distribution for Q(state, action) based on the
         observed transition (s, a, r, s').
@@ -136,8 +144,21 @@ class BayesianQLearningAgent(BaseAgent):
             target_q_sample_max = np.max(sampled_next_q_values)
 
         y = reward + self.gamma * target_q_sample_max
+        return y, mu_sa_prior, tau_sa_prior
 
-        # Bayesian update for Gaussian parameters
+    def bayesian_update(
+        self,
+        state: Tuple[int, int],
+        action: Action,
+        y: float,
+        mu_sa_prior: float,
+        tau_sa_prior: float) -> None:
+        """
+        Bayesian update for Gaussian parameters
+        """
+        row, col = state
+        action_id = action.value
+
         # New precision is prior precision + observation precision
         new_tau_sa = tau_sa_prior + self.tau_obs
         new_sigma_sq_sa = 1.0 / new_tau_sa
@@ -168,7 +189,17 @@ class BayesianQLearningAgent(BaseAgent):
             next_state: Resulting state after taking the action.
             done: True if the episode terminated after this transition.
         """
-        self.update_q_distribution(state, action, reward, next_state, done=done)
+        y:float
+        mu_sa_prior: float
+        tau_sa_prior: float
+        y, mu_sa_prior, tau_sa_prior = self.calculate_bellman_target(state, action, reward, next_state, done=done)
+        self.bayesian_update(
+            state,
+            action,
+            y,
+            mu_sa_prior,
+            tau_sa_prior
+        )
 
     def decay_epsilon(self, decay_rate: float = 0.99, min_epsilon: float = 0.01) -> None:
         """

@@ -6,7 +6,9 @@ from training.train_script import train_agent, plot_rewards
 import matplotlib.pyplot as plt
 from agents.agent_type import AgentType
 from agents.noisy_agent import NoisyAgent
+from agents.curious_agent import CuriousAgent
 from agents.noise_mode import NoiseMode
+from agents.hyperparameter import Hyperparameter
 
 if __name__ == "__main__":
     maze_array = np.array([
@@ -18,24 +20,29 @@ if __name__ == "__main__":
 
     env = BasicMaze(maze=maze_array, start_cell=(0, 0), goal_cell=(3, 3))
 
-    agent_type = AgentType.NOISY_AGENT  # Change to AgentType.Q_LEARNING for Bayesian Q-learning
+    agent_type = AgentType.CURIOUS_AGENT  # Change to AgentType.Q_LEARNING for Bayesian Q-learning
     agent = None
 
     if agent_type == AgentType.Q_LEARNING:
         print("Using Q-learning agent")
-        agent = QLearningAgent(maze_shape=env.get_shape(), action_Space=env.actions)
+        agent = QLearningAgent(
+            maze_shape=env.get_shape(),
+            action_Space=env.actions
+        )
     
     elif agent_type == AgentType.BAYESIAN_Q_LEARNING:
         print("Using Bayesian Q-learning agent")
         agent = BayesianQLearningAgent(
             maze_shape=env.get_shape(),
             action_space=env.actions,
-            alpha=0.1,
-            gamma=0.99,
-            epsilon=0.2,
-            mu_init=0.0,
-            sigma_sq_init=2.0,
-            obs_noise_variance=0.1
+            hyperparameters=Hyperparameter(
+                alpha=0.1,
+                gamma=0.99,
+                epsilon=0.2,
+                mu_init=0.0,
+                sigma_sq_init=2.0,
+                obs_noise_variance=0.1
+            )
         )
     elif agent_type == AgentType.NOISY_AGENT:
         noise_mode = NoiseMode.PERCEPTUAL  # Change to NoiseMode.NEURAL or NoiseMode.BOTH as needed
@@ -43,15 +50,39 @@ if __name__ == "__main__":
         agent = NoisyAgent(
             maze_shape=env.get_shape(),
             action_space=env.actions,
-            alpha=0.1,
-            gamma=0.99,
-            epsilon=0.2,
-            mu_init=0.0,
-            sigma_sq_init=2.0,
-            obs_noise_variance=0.1,
-            k_pn=1,
-            sigma_nn=1,
-            noise_mode=noise_mode
+            hyperparameters=Hyperparameter(
+                alpha=0.1,
+                gamma=0.99,
+                epsilon=0.2,
+                mu_init=0.0,
+                sigma_sq_init=2.0,
+                obs_noise_variance=0.1,
+                k_pn=1,
+                sigma_nn=1,
+                noise_mode=noise_mode
+            )
+        )
+    elif agent_type == AgentType.CURIOUS_AGENT:
+        print("Using Curious agent")
+        agent = CuriousAgent(
+            maze_shape=env.get_shape(),
+            action_space=env.actions,
+            hyperparameters=Hyperparameter(
+                gamma=0.99, 
+                epsilon=0.2, 
+                mu_init=0.0, 
+                sigma_sq_init=2.0, 
+                obs_noise_variance=0.1,
+                curiosity_init=0.5,
+                alpha_C=0.1,
+                surprise_weight=1.0,
+                novelty_weight=1.0,
+                usefulness_weight=1.0,
+                uncertainty_weight=1.0,
+                beta_T=0.1,
+                beta_U=0.1,
+                beta_N=0.1
+            )
         )
     else:
         raise ValueError("Unsupported agent type specified.")
