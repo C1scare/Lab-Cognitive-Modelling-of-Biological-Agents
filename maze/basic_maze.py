@@ -34,18 +34,19 @@ class BasicMaze:
     }
 
     # Reward configuration
-    reward_goal: float = 10.0
-    penalty_move: float = -0.05
-    penalty_already_visited: float = -0.1
-    penalty_impossible_move: float = -0.5
+    
 
     def __init__(
         self, 
         maze: npt.NDArray[np.int_],
         start_cell: Tuple[int, int] = (0, 0),
         goal_cell: Optional[Tuple[int, int]] = None,
-        max_steps: int = 10000
-    ) -> None:
+        max_steps: int = 10000,
+        reward_goal: float = 10.0,
+        penalty_move: float = -0.05,
+        penalty_already_visited: float = -0.1,
+        penalty_impossible_move: float = -0.5
+        ) -> None:
         """
         Initialize the maze environment.
 
@@ -54,6 +55,10 @@ class BasicMaze:
             start_cell: Starting coordinates of the agent.
             goal_cell: Goal coordinates (defaults to bottom-right).
             max_steps: Maximum allowed steps before failure.
+            reward_goal: Reward for reaching the goal.
+            penalty_move: Penalty for each move.
+            penalty_already_visited: Penalty for moving to an already visited cell.
+            penalty_impossible_move: Penalty for attempting an impossible move.
         """
         self._original_maze: npt.NDArray[np.int_] = maze
         self.maze: npt.NDArray[np.int_] = np.copy(maze)
@@ -61,6 +66,11 @@ class BasicMaze:
         nrows, ncols = self.maze.shape
         self.goal_cell: Tuple[int, int] = goal_cell if goal_cell else (nrows - 1, ncols - 1)
         self.max_steps: int = max_steps
+        self.reward_goal: float = reward_goal
+        self.penalty_move: float = penalty_move
+        self.penalty_already_visited: float = penalty_already_visited
+        self.penalty_impossible_move: float = penalty_impossible_move
+
         self._validate_and_set_cells(nrows, ncols)
 
         self.renderer: MazeRenderer = MazeRenderer(
