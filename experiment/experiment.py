@@ -13,6 +13,18 @@ import matplotlib.pyplot as plt
 class Experiment:
     """
     Manages a single reinforcement learning experiment run.
+    
+    This class handles environment setup, agent instantiation (from factory or pre-trained file),
+    training, evaluation, and result visualization. It automatically organizes output data
+    (such as trained agents and reward plots) in a structured folder hierarchy under `results/`.
+
+    Directory structure:
+        results/
+        └── AgentClassName/
+            └── <base_name><timestamp>/
+                ├── config.json
+                ├── agent_trained.pkl
+                └── (plots, logs, etc.)
     """
 
     def __init__(
@@ -23,11 +35,19 @@ class Experiment:
         agent_path: Optional[str] = None
     ):
         """
+        Initialize the Experiment.
+
         Args:
-            hyperparameters: Configuration object.
-            save_dir: Where to store experiment outputs.
-            agent_factory: A function that creates a new agent.
-            agent_path: Path to a pre-trained agent (overrides agent_factory if provided).
+            hyperparameters (Hyperparameters): Configuration for training and environment.
+            save_dir (Optional[str]): Optional base name for the experiment folder. 
+                                      A timestamp is appended automatically.
+                                      If omitted, defaults to "<maze_name>_start<start_cell_idx>_".
+            agent_factory (Optional[Callable]): Function that returns a new untrained agent when called with
+                                                the environment and hyperparameters.
+            agent_path (Optional[str]): Optional path to a pre-trained agent (overrides agent_factory if provided).
+
+        Raises:
+            ValueError:If neither agent_factory nor agent_path is provided.
         """
         self.hyperparameters = hyperparameters
         self.maze_info = mazes[hyperparameters.maze_name]
@@ -60,7 +80,24 @@ class Experiment:
         base_name = save_dir or ""
         self.save_dir = Path("results") / self._agent_class_name / f"{base_name}{timestamp}"
 
-    def run(self, train: bool = True, show_plot: bool = True, show_animation: bool = True) -> None:
+    def run(
+            self,
+            train: bool = True, 
+            show_plot: bool = True, 
+            show_animation: bool = True
+        ) -> None:
+        """
+        Run the experiment by training the agent and/or visualizing performance.
+
+        Args:
+            train (bool): Whether to train the agent. If False and a pre-trained agent is provided,
+                          only evaluation/visualization is done.
+            show_plot (bool): Whether to plot the episode reward curve after training.
+            show_animation (bool): Whether to run an animated test episode after training/evaluation.
+
+        Raises:
+            ValueError: If neither a pre-trained agent nor a factory function is available to create one.
+        """
         self.save_dir.mkdir(parents=True, exist_ok=True)
         self.hyperparameters.to_json(str(self.save_dir / "config.json"))
 
