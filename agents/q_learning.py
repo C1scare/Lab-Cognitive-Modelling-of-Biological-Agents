@@ -61,7 +61,8 @@ class QLearningAgent(BaseAgent):
         state: Tuple[int, int],
         action: Action, 
         reward: float, 
-        next_state: Tuple[int, int]
+        next_state: Tuple[int, int],
+        done: bool = False
     ) -> None:
         """
         Update the Q-value for a given state-action pair using the Bellman equation.

@@ -40,7 +40,8 @@ class BaseAgent(ABC):
         state: Tuple[int, int], 
         action: Action, 
         reward: float, 
-        next_state: Tuple[int, int]
+        next_state: Tuple[int, int],
+        done: bool = False
     ) -> None:
         """
         Update the agent's knowledge using the observed transition.
