@@ -44,7 +44,7 @@ class BasicMaze:
         maze: npt.NDArray[np.int_],
         start_cell: Tuple[int, int] = (0, 0),
         goal_cell: Optional[Tuple[int, int]] = None,
-        max_steps: int = 10000
+        max_steps: int = 200
     ) -> None:
         """
         Initialize the maze environment.

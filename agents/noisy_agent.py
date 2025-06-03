@@ -2,8 +2,8 @@ from agents.bayesian_q_learning import BayesianQLearningAgent
 import numpy as np
 from typing import Tuple, Sequence
 from maze.basic_maze import Action
-from agents.noise_mode import NoiseMode
-from agents.hyperparameter import Hyperparameter
+from enums.noise_mode import NoiseMode
+from training.hyperparameter import Hyperparameter
 
 
 class NoisyAgent(BayesianQLearningAgent):

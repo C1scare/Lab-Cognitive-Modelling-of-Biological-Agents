@@ -2,7 +2,7 @@ from agents.bayesian_q_learning import BayesianQLearningAgent
 import numpy as np
 from typing import Tuple, Sequence
 from maze.basic_maze import Action
-from agents.hyperparameter import Hyperparameter
+from training.hyperparameter import Hyperparameter
 import random
 
 
@@ -124,7 +124,6 @@ class CuriousAgent(BayesianQLearningAgent):
         novelty = self.calculate_novelty(next_state)
         usefulness = self.calculate_usefulness(state, action, y)
         uncertainty = self.calculate_uncertainty(state, action)
-        print(f"Surprise: {surprise}, Novelty: {novelty}, Usefulness: {usefulness}, Uncertainty: {uncertainty}")
             
         # Combine these components with their respective weights
         component_contributions = (self.surprise_weight * surprise +

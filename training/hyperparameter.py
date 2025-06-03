@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional
-from agents.noise_mode import NoiseMode
+from enums.noise_mode import NoiseMode
 
 class Hyperparameter(BaseModel):
     """
@@ -25,3 +25,5 @@ class Hyperparameter(BaseModel):
     beta_T: Optional[float] = Field(default=None, description="Uncertainty scaling factor for the curiosity-driven exploration.")
     beta_U: Optional[float] = Field(default=None, description="Usefulness scaling factor for the usefulness component in curiosity-driven exploration.")
     beta_N: Optional[float] = Field(default=None, description="Novelty scaling factor for the novelty component in curiosity-driven exploration.")
+
+    episodes: Optional[int] = Field(default=500, description="Number of episodes for training the agent.")

@@ -3,7 +3,7 @@ import random
 from typing import Tuple, Sequence
 from maze.basic_maze import Action
 from agents.base_agent import BaseAgent
-from agents.hyperparameter import Hyperparameter
+from training.hyperparameter import Hyperparameter
 
 class QLearningAgent(BaseAgent):
     """
