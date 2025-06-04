@@ -14,8 +14,11 @@ class ExperimentResult(BaseModel):
     max_reward: float = Field(alias="max_reward")
     learning_speed: float = Field(alias="learning_speed")
     best_path_length: int = Field(alias="best_path_length")
-    trajectory_history: dict[int, List[Tuple[int, int]]] = Field(alias="trajectory_history", default_factory=dict)
-    maze_history: List[BasicMaze] = Field(alias="maze_history", default_factory=list)
+    trajectory_history: dict[int, List[Tuple[Tuple[int, int], Tuple[int, int]]]] = Field(alias="trajectory_history", default_factory=dict)
+    maze_history: dict[int, Tuple[BasicMaze, Tuple[int,int]]] = Field(alias="maze_history", default_factory=list)
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 def train_agent(
@@ -40,12 +43,12 @@ def train_agent(
     env:BasicMaze = maze_scheduler.maze
     episode_rewards: List[float] = []
     success_count = 0
-    trajectory_history: dict[int, List[Tuple[int, int]]] = {}
-    maze_history: List[BasicMaze] = []
+    trajectory_history: dict[int, List[Tuple[Tuple[int, int],Tuple[int, int]]]] = {}
+    maze_history: dict[int, Tuple[BasicMaze, Tuple[int,int]]] = {}
 
     for episode in range(episodes):
-        maze_history.append(env)
         state = env.reset(env.start_cell)
+        maze_history[episode] = (env, env.start_cell)
         total_reward = 0
         if episode not in trajectory_history:
             trajectory_history[episode] = []
@@ -59,7 +62,7 @@ def train_agent(
             done = status != GameStatus.IN_PROGRESS
             agent.learn(state, action, reward, next_state, done)
 
-            trajectory_history[episode].append(next_state)
+            trajectory_history[episode].append((state, next_state))
 
             state: Tuple[int, int] = next_state
             total_reward += reward

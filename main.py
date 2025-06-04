@@ -6,7 +6,6 @@ from training.hyperparameter_scheduler import HyperparameterScheduler
 from enums.hyperparam_opt_type import HyperparamOptType
 from enums.score_metric import ScoreMetric
 import datetime
-import asyncio
 
 
 def single_experiment_run(experiment: Experiment):
@@ -24,8 +23,10 @@ def optimize_run(hyperparameterScheduler: HyperparameterScheduler):
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     hyperparameters = Hyperparameter(**best_params)
     hyperparameters.noise_mode = hyperparameterScheduler.noise_mode
+    if hyperparameterScheduler.agent_type == AgentType.CURIOUS_AGENT:
+        hyperparameters.usefulness_weight = 1.0 - hyperparameters.surprise_weight - hyperparameters.novelty_weight - hyperparameters.uncertainty_weight
     experiment = Experiment(
-        experiment_name=f"{hyperparameterScheduler.agent_type.value}_{timestamp}",
+        experiment_name=f"{hyperparameterScheduler.agent_type.value.replace(" ", "_")}_{hyperparameterScheduler.optimization_type.value}_{timestamp}",
         agent_type=hyperparameterScheduler.agent_type,
         hyperparameters=hyperparameters,
         save_results=True
@@ -37,8 +38,8 @@ if __name__ == "__main__":
     # Initialize the experiment
     scheduler = HyperparameterScheduler(
         optimization_type=HyperparamOptType.OPTUNA,
-        agent_type=AgentType.NOISY_AGENT,
-        noise_mode=NoiseMode.NEURAL,
+        agent_type=AgentType.CURIOUS_AGENT,
+        noise_mode=NoiseMode.NONE,
         opt_score_metric=ScoreMetric.MAX_REWARD,
         n_trials=10
     )

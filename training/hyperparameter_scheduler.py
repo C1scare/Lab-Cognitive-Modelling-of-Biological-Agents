@@ -61,10 +61,10 @@ class HyperparameterScheduler:
                 "obs_noise_variance": (0.01, 0.5),
                 "curiosity_init": (0.1, 1.0),
                 "alpha_C": (0.01, 0.1),
-                "surprise_weight": (0.01, 2.0),
-                "novelty_weight": (0.01, 2.0),
-                "usefulness_weight": (0.01, 2.0),
-                "uncertainty_weight": (0.01, 2.0),
+                "surprise_weight": (1e-5, 1.0),
+                "novelty_weight": (1e-5, 1.0),
+                "usefulness_weight": (1e-5, 1.0),
+                "uncertainty_weight": (1e-5, 1.0),
                 "beta_T": (0.01, 0.1),
                 "beta_U": (0.01, 0.1),
                 "beta_N": (0.01, 0.1)
@@ -103,15 +103,13 @@ class HyperparameterScheduler:
                 "epsilon": trial.suggest_float("epsilon", *self.hyperparameter_ranges["epsilon"]),
                 "mu_init": trial.suggest_float("mu_init", *self.hyperparameter_ranges["mu_init"]),
                 "sigma_sq_init": trial.suggest_float("sigma_sq_init", *self.hyperparameter_ranges["sigma_sq_init"]),
-                "obs_noise_variance": trial.suggest_float("obs_noise_variance", *self.hyperparameter_ranges["obs_noise_variance"]),
-                #"random_seed": self.seed
+                "obs_noise_variance": trial.suggest_float("obs_noise_variance", *self.hyperparameter_ranges["obs_noise_variance"])
             }
         elif self.agent_type == AgentType.Q_LEARNING:
             hyperparameters = {
                 "alpha": trial.suggest_float("alpha", *self.hyperparameter_ranges["alpha"]),
                 "gamma": trial.suggest_float("gamma", *self.hyperparameter_ranges["gamma"]),
-                "epsilon": trial.suggest_float("epsilon", *self.hyperparameter_ranges["epsilon"]),
-                #"random_seed": self.seed
+                "epsilon": trial.suggest_float("epsilon", *self.hyperparameter_ranges["epsilon"])
             }
         elif self.agent_type == AgentType.CURIOUS_AGENT:
             hyperparameters = {
@@ -124,13 +122,17 @@ class HyperparameterScheduler:
                 "alpha_C": trial.suggest_float("alpha_C", *self.hyperparameter_ranges["alpha_C"]),
                 "surprise_weight": trial.suggest_float("surprise_weight", *self.hyperparameter_ranges["surprise_weight"]),
                 "novelty_weight": trial.suggest_float("novelty_weight", *self.hyperparameter_ranges["novelty_weight"]),
-                "usefulness_weight": trial.suggest_float("usefulness_weight", *self.hyperparameter_ranges["usefulness_weight"]),
                 "uncertainty_weight": trial.suggest_float("uncertainty_weight", *self.hyperparameter_ranges["uncertainty_weight"]),
                 "beta_T": trial.suggest_float("beta_T", *self.hyperparameter_ranges["beta_T"]),
                 "beta_U": trial.suggest_float("beta_U", *self.hyperparameter_ranges["beta_U"]),
-                "beta_N": trial.suggest_float("beta_N", *self.hyperparameter_ranges["beta_N"]),
-                #"random_seed": self.seed
+                "beta_N": trial.suggest_float("beta_N", *self.hyperparameter_ranges["beta_N"])
             }
+            usefulness_weight = 1.0 - hyperparameters["surprise_weight"] - hyperparameters["novelty_weight"] - hyperparameters["uncertainty_weight"]
+            if usefulness_weight < self.hyperparameter_ranges["usefulness_weight"][0] or usefulness_weight > self.hyperparameter_ranges["usefulness_weight"][1]:
+                raise optuna.exceptions.TrialPruned("Sum of weights exceeded 1 or resulted in out-of-range usefulness_weight.")
+            hyperparameters["usefulness_weight"] = usefulness_weight
+
+
         elif self.agent_type == AgentType.NOISY_AGENT:
             hyperparameters = {
                 "gamma": trial.suggest_float("gamma", *self.hyperparameter_ranges["gamma"]),
@@ -140,8 +142,7 @@ class HyperparameterScheduler:
                 "obs_noise_variance": trial.suggest_float("obs_noise_variance", *self.hyperparameter_ranges["obs_noise_variance"]),
                 "k_pn": trial.suggest_float("k_pn", *self.hyperparameter_ranges["k_pn"]),
                 "sigma_nn": trial.suggest_float("sigma_nn", *self.hyperparameter_ranges["sigma_nn"]),
-                "noise_mode": self.noise_mode,
-                #"random_seed": self.seed
+                "noise_mode": self.noise_mode
             }
 
         # Run the experiment with the current hyperparameters
