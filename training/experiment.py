@@ -1,5 +1,4 @@
 import os
-import numpy as np
 from maze.basic_maze import BasicMaze
 from agents.q_learning import QLearningAgent
 from agents.bayesian_q_learning import BayesianQLearningAgent
@@ -10,13 +9,7 @@ from agents.curious_agent import CuriousAgent
 from enums.noise_mode import NoiseMode
 from training.hyperparameter import Hyperparameter
 from training.train_script import ExperimentResult
-import plotly.graph_objects as go
-import plotly.express as px
-from collections import Counter
 import pickle
-import dash
-from dash import dcc, html
-import dash_bootstrap_components as dbc
 from maze.maze_scheduler import MazeScheduler
 
 

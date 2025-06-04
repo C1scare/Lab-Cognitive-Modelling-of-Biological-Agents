@@ -3,6 +3,7 @@ from typing import List, Tuple
 from maze.basic_maze import BasicMaze, Action, GameStatus
 from maze.maze_scheduler import MazeScheduler
 from agents.base_agent import BaseAgent
+from agents.curious_agent import CuriousAgent
 import numpy as np
 from pydantic import BaseModel, Field
 
@@ -16,6 +17,7 @@ class ExperimentResult(BaseModel):
     best_path_length: int = Field(alias="best_path_length")
     trajectory_history: dict[int, List[Tuple[Tuple[int, int], Tuple[int, int]]]] = Field(alias="trajectory_history", default_factory=dict)
     maze_history: dict[int, Tuple[BasicMaze, Tuple[int,int]]] = Field(alias="maze_history", default_factory=list)
+    curiosity_history: dict[int, dict[Tuple[Tuple[int, int], Tuple[int, int]], float]] = Field(alias="curiosity_history", default_factory=dict)
 
     class Config:
         arbitrary_types_allowed = True
@@ -45,6 +47,7 @@ def train_agent(
     success_count = 0
     trajectory_history: dict[int, List[Tuple[Tuple[int, int],Tuple[int, int]]]] = {}
     maze_history: dict[int, Tuple[BasicMaze, Tuple[int,int]]] = {}
+    curiosity_history = {} if isinstance(agent, CuriousAgent) else None
 
     for episode in range(episodes):
         state = env.reset(env.start_cell)
@@ -63,6 +66,9 @@ def train_agent(
             agent.learn(state, action, reward, next_state, done)
 
             trajectory_history[episode].append((state, next_state))
+            if isinstance(agent, CuriousAgent):
+                curiosity_map = agent.transform_curiosity_map(env)
+                curiosity_history[episode] = curiosity_map
 
             state: Tuple[int, int] = next_state
             total_reward += reward
@@ -94,6 +100,7 @@ def train_agent(
         learning_speed=-1 * np.argmax(np.array(episode_rewards)),
         best_path_length=len(trajectory_history[np.argmax(np.array(episode_rewards))]),
         trajectory_history=trajectory_history,
-        maze_history=maze_history
+        maze_history=maze_history,
+        curiosity_history=curiosity_history
     )
                             
