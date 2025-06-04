@@ -65,6 +65,10 @@ class BayesianQLearningAgent(BaseAgent):
             raise ValueError("Observation noise variance must be positive.")
         # Precision of the observation noise in the Bellman update
         self.tau_obs = 1.0 / hyperparameters.obs_noise_variance
+        self.seed = hyperparameters.random_seed
+        if self.seed is not None:
+            random.seed(self.seed)
+            np.random.seed(self.seed)
 
     def thompson_sample_action(self, state: Tuple[int, int]) -> Action:
         """

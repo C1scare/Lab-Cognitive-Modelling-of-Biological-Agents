@@ -14,7 +14,8 @@ class HyperparameterScheduler:
                 agent_type: AgentType = AgentType.BAYESIAN_Q_LEARNING,
                 noise_mode: NoiseMode = NoiseMode.NONE,
                 opt_score_metric:ScoreMetric = ScoreMetric.MAX_REWARD,
-                n_trials: int = 100
+                n_trials: int = 100,
+                random_seed: int = 42
                 ):
         """
         Initialize the hyperparameter scheduler.
@@ -31,6 +32,7 @@ class HyperparameterScheduler:
         self.noise_mode = noise_mode
         self.opt_score_metric = opt_score_metric
         self.n_trials = n_trials
+        self.seed = random_seed  # Seed for reproducibility
 
     def _setup_hyperparam_ranges(self):
         if self.agent_type == AgentType.Q_LEARNING:
@@ -101,13 +103,15 @@ class HyperparameterScheduler:
                 "epsilon": trial.suggest_float("epsilon", *self.hyperparameter_ranges["epsilon"]),
                 "mu_init": trial.suggest_float("mu_init", *self.hyperparameter_ranges["mu_init"]),
                 "sigma_sq_init": trial.suggest_float("sigma_sq_init", *self.hyperparameter_ranges["sigma_sq_init"]),
-                "obs_noise_variance": trial.suggest_float("obs_noise_variance", *self.hyperparameter_ranges["obs_noise_variance"])
+                "obs_noise_variance": trial.suggest_float("obs_noise_variance", *self.hyperparameter_ranges["obs_noise_variance"]),
+                #"random_seed": self.seed
             }
         elif self.agent_type == AgentType.Q_LEARNING:
             hyperparameters = {
                 "alpha": trial.suggest_float("alpha", *self.hyperparameter_ranges["alpha"]),
                 "gamma": trial.suggest_float("gamma", *self.hyperparameter_ranges["gamma"]),
-                "epsilon": trial.suggest_float("epsilon", *self.hyperparameter_ranges["epsilon"])
+                "epsilon": trial.suggest_float("epsilon", *self.hyperparameter_ranges["epsilon"]),
+                #"random_seed": self.seed
             }
         elif self.agent_type == AgentType.CURIOUS_AGENT:
             hyperparameters = {
@@ -124,7 +128,8 @@ class HyperparameterScheduler:
                 "uncertainty_weight": trial.suggest_float("uncertainty_weight", *self.hyperparameter_ranges["uncertainty_weight"]),
                 "beta_T": trial.suggest_float("beta_T", *self.hyperparameter_ranges["beta_T"]),
                 "beta_U": trial.suggest_float("beta_U", *self.hyperparameter_ranges["beta_U"]),
-                "beta_N": trial.suggest_float("beta_N", *self.hyperparameter_ranges["beta_N"])
+                "beta_N": trial.suggest_float("beta_N", *self.hyperparameter_ranges["beta_N"]),
+                #"random_seed": self.seed
             }
         elif self.agent_type == AgentType.NOISY_AGENT:
             hyperparameters = {
@@ -135,7 +140,8 @@ class HyperparameterScheduler:
                 "obs_noise_variance": trial.suggest_float("obs_noise_variance", *self.hyperparameter_ranges["obs_noise_variance"]),
                 "k_pn": trial.suggest_float("k_pn", *self.hyperparameter_ranges["k_pn"]),
                 "sigma_nn": trial.suggest_float("sigma_nn", *self.hyperparameter_ranges["sigma_nn"]),
-                "noise_mode": self.noise_mode
+                "noise_mode": self.noise_mode,
+                #"random_seed": self.seed
             }
 
         # Run the experiment with the current hyperparameters
@@ -153,7 +159,8 @@ class HyperparameterScheduler:
         print(f"Starting Optuna Optimization for '{self.agent_type}' (maximizing '{self.opt_score_metric}')...")
         print("="*80)
 
-        study = optuna.create_study(direction="maximize", study_name=f"{self.agent_type}_optimization")
+        sampler = optuna.samplers.TPESampler(seed=self.seed)
+        study = optuna.create_study(direction="maximize", study_name=f"{self.agent_type}_optimization", sampler=sampler)
         study.optimize(self._objective, n_trials=n_trials)
 
 

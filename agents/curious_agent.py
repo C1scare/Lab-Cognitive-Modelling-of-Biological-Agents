@@ -74,6 +74,10 @@ class CuriousAgent(BayesianQLearningAgent):
         self.beta_T = hyperparameters.beta_T
         self.beta_U = hyperparameters.beta_U
         self.beta_N = hyperparameters.beta_N
+        self.seed = hyperparameters.random_seed
+        if self.seed is not None:
+            random.seed(self.seed)
+            np.random.seed(self.seed)
 
     def calculate_surprise(self,
                            state:Tuple[int, int],

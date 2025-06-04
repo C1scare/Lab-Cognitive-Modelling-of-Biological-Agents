@@ -5,12 +5,14 @@ from training.experiment import Experiment
 from training.hyperparameter_scheduler import HyperparameterScheduler
 from enums.hyperparam_opt_type import HyperparamOptType
 from enums.score_metric import ScoreMetric
+import datetime
+import asyncio
 
 
 def single_experiment_run(experiment: Experiment):
     experiment_result = experiment.run_experiment()
-    fig = experiment.create_dashboard(experiment_result)
-    fig.show()
+    app = experiment.create_dashboard(experiment_result)
+    return app
 
 
 def optimize_run(hyperparameterScheduler: HyperparameterScheduler):
@@ -19,28 +21,18 @@ def optimize_run(hyperparameterScheduler: HyperparameterScheduler):
     print(f"Best value: {best_value}")
     
     # Run the experiment with the best hyperparameters
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     experiment = Experiment(
+        experiment_name=f"{hyperparameterScheduler.agent_type.value}_{timestamp}",
         agent_type=hyperparameterScheduler.agent_type,
-        hyperparameters=Hyperparameter(**best_params)
+        hyperparameters=Hyperparameter(**best_params),
+        save_results=True
     )
-    single_experiment_run(experiment)
+    return single_experiment_run(experiment)
 
 
 if __name__ == "__main__":
     # Initialize the experiment
-    experiment = Experiment(
-        agent_type=AgentType.BAYESIAN_Q_LEARNING,
-        hyperparameters=Hyperparameter(
-            alpha=0.1,
-            gamma=0.99,
-            epsilon=0.2,
-            mu_init=0.0,
-            sigma_sq_init=2.0,
-            obs_noise_variance=0.1
-        ),
-    )
-    #single_experiment_run(experiment)
-
     scheduler = HyperparameterScheduler(
         optimization_type=HyperparamOptType.OPTUNA,
         agent_type=AgentType.CURIOUS_AGENT,
@@ -48,6 +40,7 @@ if __name__ == "__main__":
         opt_score_metric=ScoreMetric.MAX_REWARD,
         n_trials=10
     )
-    optimize_run(scheduler)
+    app = optimize_run(scheduler)
+    app.run(debug=False, port=8050)
 
     

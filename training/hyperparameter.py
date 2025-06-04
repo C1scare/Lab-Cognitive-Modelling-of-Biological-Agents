@@ -27,3 +27,4 @@ class Hyperparameter(BaseModel):
     beta_N: Optional[float] = Field(default=None, description="Novelty scaling factor for the novelty component in curiosity-driven exploration.")
 
     episodes: Optional[int] = Field(default=500, description="Number of episodes for training the agent.")
+    random_seed: Optional[int] = Field(default=42, description="Random seed for reproducibility.")

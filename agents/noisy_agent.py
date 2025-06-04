@@ -59,7 +59,6 @@ class NoisyAgent(BayesianQLearningAgent):
         if hyperparameters.noise_mode == NoiseMode.BOTH or hyperparameters.noise_mode == NoiseMode.NEURAL and self.sigma_nn <= 0:
             raise ValueError("Neural noise variance (sigma_nn) must be greater than 0 when neural noise is enabled.")
 
-
     def apply_perceptual_noise(self, reward: float) -> float:
         """
         Apply perceptual noise to the reward based on the k_pn parameter.

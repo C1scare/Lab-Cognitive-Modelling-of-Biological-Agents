@@ -1,10 +1,9 @@
 import os
 import numpy as np
-from maze.basic_maze import BasicMaze, GameStatus
+from maze.basic_maze import BasicMaze
 from agents.q_learning import QLearningAgent
 from agents.bayesian_q_learning import BayesianQLearningAgent
 from training.train_script import train_agent
-import matplotlib.pyplot as plt
 from enums.agent_type import AgentType
 from agents.noisy_agent import NoisyAgent
 from agents.curious_agent import CuriousAgent
@@ -12,7 +11,11 @@ from enums.noise_mode import NoiseMode
 from training.hyperparameter import Hyperparameter
 from training.train_script import ExperimentResult
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
+import pickle
+import dash
+from dash import dcc, html
+import dash_bootstrap_components as dbc
+import asyncio
 
 
 class Experiment:
@@ -100,6 +103,10 @@ class Experiment:
 
         scores:ExperimentResult = train_agent(env, agent, episodes=self.hyperparameters.episodes)
 
+        if self.save_results:
+            with open(os.path.join(self.storage_path, f"{self.experiment_name}_instance.pkl"), "wb") as f:
+                pickle.dump(self, f)
+            
         return scores
 
 
@@ -110,32 +117,84 @@ class Experiment:
             [0, 0, 0, 0],
             [0, 1, 1, 0]
         ])
+        # --- 5. Create Dash App ---
+        app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+
+        # --- 6. Define Layout ---
+        app.layout = dbc.Container(fluid=True, children=[
+            html.H1("Experiment Results Dashboard", className="my-4 text-center"),
+
+            dbc.Row(className="mb-4", children=[
+                dbc.Col(
+                    dcc.Graph(
+                        id='maze-trajectory-graph',
+                        figure=self.create_maze_trajectory_figure(maze, experiment_result),
+                        style={'height': '500px'}
+                    ),
+                    lg=8 # Maze graph takes 2/3 of the width on large screens
+                ),
+                dbc.Col(
+                    html.Div(className="card shadow-sm p-3 mb-4", children=[
+                        html.H4("Experiment Metrics", className="card-title text-center mb-3"),
+                        dbc.Row(children=[
+                            dbc.Col(dbc.Card(dbc.CardBody([
+                                html.H5("Success Rate", className="card-subtitle mb-2 text-muted"),
+                                html.H3(f"{experiment_result.success_rate:.2f}", className="card-text text-center"),
+                                # Optional: Add delta if you have a reference or previous value
+                                # html.P(f"vs. 0.70 (Target)", className="text-muted text-center")
+                            ]), className="m-1")),
+                            dbc.Col(dbc.Card(dbc.CardBody([
+                                html.H5("Average Reward", className="card-subtitle mb-2 text-muted"),
+                                html.H3(f"{experiment_result.average_reward:.2f}", className="card-text text-center")
+                            ]), className="m-1"))
+                        ]),
+                        dbc.Row(children=[
+                            dbc.Col(dbc.Card(dbc.CardBody([
+                                html.H5("Max Reward", className="card-subtitle mb-2 text-muted"),
+                                html.H3(f"{experiment_result.max_reward:.2f}", className="card-text text-center")
+                            ]), className="m-1")),
+                            dbc.Col(dbc.Card(dbc.CardBody([
+                                html.H5("Learning Speed", className="card-subtitle mb-2 text-muted"),
+                                html.H3(f"{-1*experiment_result.learning_speed:.2f}", className="card-text text-center")
+                            ]), className="m-1"))
+                        ]),
+                        dbc.Row(children=[
+                            dbc.Col(dbc.Card(dbc.CardBody([
+                                html.H5("Best Path Length", className="card-subtitle mb-2 text-muted"),
+                                html.H3(f"{experiment_result.best_path_length}", className="card-text text-center")
+                            ]), className="m-1"))
+                        ], justify="center") # Center the single card if there's an odd number
+                    ]),
+                    lg=4 # Metrics column takes 1/3 of the width on large screens
+                )
+            ]),
+
+            dbc.Row(className="mb-4", children=[
+                dbc.Col(
+                    dcc.Graph(
+                        id='cumulative-rewards-graph',
+                        figure=self.create_cumulative_rewards_figure(experiment_result),
+                        style={'height': '400px'}
+                    ),
+                    width=12 # Cumulative rewards takes full width below
+                )
+            ])
+        ])
+        return app
+
+    
+    def create_maze_trajectory_figure(self, maze: np.ndarray, experiment_result: ExperimentResult):
         rows, cols = maze.shape
+        fig = go.Figure()
 
-        fig = make_subplots(
-            rows=2,
-            cols=2,
-            column_widths=[0.6, 0.4],
-            row_heights=[0.6, 0.4],
-            specs=[
-                [{"type": "xy", "rowspan": 1, "colspan": 1}, {"type": "indicator", "rowspan": 1, "colspan": 1}],
-                [{"type": "xy", "rowspan": 1, "colspan": 1}, {"type": "indicator", "rowspan": 1, "colspan": 1}]
-            ],
-            subplot_titles=("Maze Trajectories", "Experiment Metrics", "Cumulative Rewards", "Additional Metrics")
-        )
-
-        # --- 1. Maze and Trajectories ---
-        # Depicting the maze
-        # Use an image trace for the maze for better visual representation
-        maze_img = np.zeros((rows, cols, 3), dtype=np.uint8)
-        maze_img[maze == 0] = [255, 255, 255]  # Path (white)
-        maze_img[maze == 1] = [100, 100, 100]  # Obstacle (gray)
-        maze_img[maze == 2] = [0, 255, 0]    # Start (green)
-        maze_img[maze == 3] = [255, 0, 0]    # End (red)
-
+        # Depicting the maze as a heatmap
         fig.add_trace(
-            go.Heatmap(z=maze, colorscale=[[0, 'white'], [1, 'gray'], [0.66, 'green'], [1, 'red']], showscale=False),
-            row=1, col=1
+            go.Heatmap(
+                z=maze,
+                colorscale=[[0, 'white'], [1, 'gray'], [0.66, 'green'], [1, 'red']], # Path, Obstacle, Start, End
+                showscale=False,
+                name='Maze'
+            )
         )
 
         # Plotting trajectories with low opacity and hover info
@@ -156,8 +215,7 @@ class Experiment:
                     hoverinfo='text',
                     hovertext=hover_text,
                     showlegend=False
-                ),
-                row=1, col=1
+                )
             )
 
         # Add start and end points for clarity if they exist in the maze
@@ -167,122 +225,62 @@ class Experiment:
         if start_y.size > 0:
             fig.add_trace(go.Scatter(
                 x=[start_x[0]], y=[start_y[0]], mode='markers',
-                marker=dict(symbol='star', size=15, color='green'),
+                marker=dict(symbol='star', size=15, color='green', line=dict(width=1, color='black')),
                 name='Start', hoverinfo='name', showlegend=False
-            ), row=1, col=1)
+            ))
 
         if end_y.size > 0:
             fig.add_trace(go.Scatter(
-                x=[end_x[0]], y=[end_x[0]], mode='markers',
-                marker=dict(symbol='star', size=15, color='red'),
+                x=[end_x[0]], y=[end_y[0]], mode='markers',
+                marker=dict(symbol='star', size=15, color='red', line=dict(width=1, color='black')),
                 name='End', hoverinfo='name', showlegend=False
-            ), row=1, col=1)
-
-
-        fig.update_xaxes(title_text="X-coordinate", row=1, col=1,
-                        tickmode='array', tickvals=np.arange(cols), ticktext=[str(i) for i in np.arange(cols)])
-        fig.update_yaxes(title_text="Y-coordinate", row=1, col=1,
-                        tickmode='array', tickvals=np.arange(rows), ticktext=[str(i) for i in np.arange(rows)],
-                        autorange='reversed') # Reverse Y-axis to match typical array indexing (row 0 at top)
-
-
-        # --- 2. Cumulative Rewards Graph ---
-        fig.add_trace(
-            go.Scatter(
-                x=list(range(len(experiment_result.cumulative_reward))),
-                y=experiment_result.cumulative_reward,
-                mode='lines+markers',
-                name='Cumulative Reward Over Episodes',
-                line=dict(color='purple', width=2),
-                marker=dict(size=4)
-            ),
-            row=2, col=1
-        )
-        fig.update_xaxes(title_text="Episode", row=2, col=1)
-        fig.update_yaxes(title_text="Cumulative Reward", row=2, col=1)
-
-        # --- 3. Other Metric Information (Indicators) ---
-        fig.add_trace(
-            go.Indicator(
-                mode="number+delta",
-                value=experiment_result.success_rate,
-                number={'valueformat': ".2f"},
-                delta={'reference': 0.7, 'relative': False, 'valueformat': ".2f", 'increasing': {'color': "green"}, 'decreasing': {'color': "red"}},
-                title={"text": "Success Rate"},
-            ),
-            row=1, col=2
-        )
-
-        # To add multiple indicators in the same subplot without them overlapping too much,
-        # you often need to define their exact positions within the subplot's domain.
-        # Alternatively, you can create more subplots for indicators or use annotations.
-        # For simplicity, let's stack them vertically using a slightly different approach or just accept default stacking.
-
-        # Instead of adding all indicators to row=2, col=2 directly,
-        # let's manually position them if we want to avoid them stacking directly on top of each other.
-        # However, make_subplots automatically positions them within the given cell.
-        # If you want them separated, you need to add more cells or adjust domain.
-
-        # Here, I'll put additional metrics as separate indicators but still in the same subplot area,
-        # relying on Plotly's default stacking. For better side-by-side display,
-        # you'd need more subplot cells or a more complex layout.
-        # The existing code adds them to (2,2) and (1,2). Let's refine how they are displayed.
-
-        # Let's add the remaining indicators to the existing indicator subplot area (1,2)
-        # or consider making a new subplot area for them to separate concerns if needed.
-        # For now, let's add them to the same column (col=2) and let Plotly stack them.
-
-        fig.add_trace(
-            go.Indicator(
-                mode="number",
-                value=experiment_result.average_reward,
-                number={'valueformat': ".2f"},
-                title={"text": "Average Reward"},
-            ),
-            row=1, col=2 # Keep adding to this same indicator subplot area
-        )
-
-        fig.add_trace(
-            go.Indicator(
-                mode="number",
-                value=experiment_result.max_reward,
-                number={'valueformat': ".2f"},
-                title={"text": "Max Reward"},
-            ),
-            row=1, col=2 # Keep adding to this same indicator subplot area
-        )
-
-        fig.add_trace(
-            go.Indicator(
-                mode="number",
-                value=experiment_result.learning_speed,
-                number={'valueformat': ".2f"},
-                title={"text": "Learning Speed"},
-            ),
-            row=1, col=2 # Keep adding to this same indicator subplot area
-        )
-
-        fig.add_trace(
-            go.Indicator(
-                mode="number",
-                value=experiment_result.best_path_length,
-                number={'valueformat': "d"},
-                title={"text": "Best Path Length"},
-            ),
-            row=1, col=2 # Keep adding to this same indicator subplot area
-        )
-
+            ))
 
         fig.update_layout(
-            height=800,
-            width=1200,
-            title_text="Experiment Results Dashboard",
-            template="plotly_white",
+            title="Maze Trajectories",
+            xaxis=dict(
+                title="X-coordinate",
+                tickmode='array',
+                tickvals=np.arange(cols),
+                ticktext=[str(i) for i in np.arange(cols)],
+                range=[-0.5, cols - 0.5] # Extend range to show full cells
+            ),
+            yaxis=dict(
+                title="Y-coordinate",
+                tickmode='array',
+                tickvals=np.arange(rows),
+                ticktext=[str(i) for i in np.arange(rows)],
+                autorange='reversed', # Reverse Y-axis to match typical array indexing (row 0 at top)
+                range=[rows - 0.5, -0.5] # Extend range to show full cells, reversed
+            ),
+            plot_bgcolor='rgba(0,0,0,0)', # Transparent background
+            paper_bgcolor='rgba(0,0,0,0)', # Transparent paper background
+            margin=dict(l=40, r=40, t=40, b=40)
         )
-
-        # Update subplot title font size
-        for annotation in fig.layout.annotations:
-            if 'subplot' in annotation.text: # Check if it's a subplot title
-                annotation.font.size = 16 # Set desired font size
-
         return fig
+
+    # --- 4. Function to Create Cumulative Rewards Figure ---
+    def create_cumulative_rewards_figure(self, experiment_result: ExperimentResult):
+        cumulative_reward = experiment_result.cumulative_reward
+        fig = go.Figure()
+        fig.add_trace(
+            go.Scatter(
+                x=list(range(len(cumulative_reward))),
+                y=cumulative_reward,
+                mode='lines+markers',
+                name='Cumulative Reward',
+                line=dict(color='purple', width=2),
+                marker=dict(size=4)
+            )
+        )
+        fig.update_layout(
+            title="Cumulative Rewards Over Episodes",
+            xaxis_title="Episode",
+            yaxis_title="Cumulative Reward",
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            margin=dict(l=40, r=40, t=40, b=40)
+        )
+        return fig
+
+    

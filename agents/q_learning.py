@@ -46,6 +46,10 @@ class QLearningAgent(BaseAgent):
         self.gamma = hyperparameters.gamma
         self.epsilon = hyperparameters.epsilon
         self.action_space = list(action_Space)
+        self.seed = hyperparameters.random_seed
+        if self.seed is not None:
+            random.seed(self.seed)
+            np.random.seed(self.seed)
 
     def choose_action(self, state: Tuple[int, int]) -> Action:
         """
