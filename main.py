@@ -22,10 +22,12 @@ def optimize_run(hyperparameterScheduler: HyperparameterScheduler):
     
     # Run the experiment with the best hyperparameters
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    hyperparameters = Hyperparameter(**best_params)
+    hyperparameters.noise_mode = hyperparameterScheduler.noise_mode
     experiment = Experiment(
         experiment_name=f"{hyperparameterScheduler.agent_type.value}_{timestamp}",
         agent_type=hyperparameterScheduler.agent_type,
-        hyperparameters=Hyperparameter(**best_params),
+        hyperparameters=hyperparameters,
         save_results=True
     )
     return single_experiment_run(experiment)
@@ -35,8 +37,8 @@ if __name__ == "__main__":
     # Initialize the experiment
     scheduler = HyperparameterScheduler(
         optimization_type=HyperparamOptType.OPTUNA,
-        agent_type=AgentType.CURIOUS_AGENT,
-        noise_mode=NoiseMode.NONE,
+        agent_type=AgentType.NOISY_AGENT,
+        noise_mode=NoiseMode.NEURAL,
         opt_score_metric=ScoreMetric.MAX_REWARD,
         n_trials=10
     )
