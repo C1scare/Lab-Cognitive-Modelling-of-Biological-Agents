@@ -45,7 +45,8 @@ class BasicMaze:
         maze: npt.NDArray[np.int_],
         start_cell: Tuple[int, int] = (0, 0),
         goal_cell: Optional[Tuple[int, int]] = None,
-        max_steps: int = 200
+        max_steps: int = 200,
+        random_seed: int = 42
     ) -> None:
         """
         Initialize the maze environment.
@@ -70,6 +71,8 @@ class BasicMaze:
             show_grid=False
         )
         self.reset(self.start_cell)
+
+        self.random_seed: int = random_seed
 
     def reset(self, start_cell: Tuple[int, int]) -> Tuple[int, int]:
         """
