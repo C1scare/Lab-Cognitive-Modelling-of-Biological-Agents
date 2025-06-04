@@ -1,6 +1,7 @@
 from maze.basic_maze import GameStatus
 from typing import List, Tuple
 from maze.basic_maze import BasicMaze, Action, GameStatus
+from maze.maze_scheduler import MazeScheduler
 from agents.base_agent import BaseAgent
 import numpy as np
 from pydantic import BaseModel, Field
@@ -14,11 +15,12 @@ class ExperimentResult(BaseModel):
     learning_speed: float = Field(alias="learning_speed")
     best_path_length: int = Field(alias="best_path_length")
     trajectory_history: dict[int, List[Tuple[int, int]]] = Field(alias="trajectory_history", default_factory=dict)
+    maze_history: List[BasicMaze] = Field(alias="maze_history", default_factory=list)
 
 
 def train_agent(
-    env: BasicMaze, 
-    agent: BaseAgent, 
+    maze_scheduler: MazeScheduler, 
+    agent: BaseAgent,
     episodes: int = 500,
     decay_epsilon: bool = True
 ) -> ExperimentResult:
@@ -35,11 +37,14 @@ def train_agent(
         List of total rewards received in each episode.
     
     """
+    env:BasicMaze = maze_scheduler.maze
     episode_rewards: List[float] = []
     success_count = 0
     trajectory_history: dict[int, List[Tuple[int, int]]] = {}
+    maze_history: List[BasicMaze] = []
 
     for episode in range(episodes):
+        maze_history.append(env)
         state = env.reset(env.start_cell)
         total_reward = 0
         if episode not in trajectory_history:
@@ -72,6 +77,10 @@ def train_agent(
 
         if episode % 50 == 0:
             print(f"Episode {episode}, Total Reward: {total_reward:.2f}, Status: {status.name}")
+        
+        if episode % maze_scheduler.trials == 0 and episode > 0:
+            maze_scheduler.next_maze()
+            env = maze_scheduler.maze
 
 
     return ExperimentResult(
@@ -81,6 +90,7 @@ def train_agent(
         max_reward=max(episode_rewards),
         learning_speed=-1 * np.argmax(np.array(episode_rewards)),
         best_path_length=len(trajectory_history[np.argmax(np.array(episode_rewards))]),
-        trajectory_history=trajectory_history
+        trajectory_history=trajectory_history,
+        maze_history=maze_history
     )
                             

@@ -15,7 +15,7 @@ import pickle
 import dash
 from dash import dcc, html
 import dash_bootstrap_components as dbc
-import asyncio
+from maze.maze_scheduler import MazeScheduler
 
 
 class Experiment:
@@ -31,6 +31,7 @@ class Experiment:
                      sigma_sq_init=2.0,
                      obs_noise_variance=0.1
                  ),
+                 MazeScheduler: MazeScheduler = MazeScheduler(trials=10),
                  save_results: bool = False
                  ):
         """
@@ -46,6 +47,7 @@ class Experiment:
             os.makedirs(storage_path)
         self.agent_type = agent_type
         self.hyperparameters = hyperparameters
+        self.maze_scheduler = MazeScheduler
         self.save_results = save_results
 
     def run_experiment(self) -> ExperimentResult:
@@ -59,14 +61,7 @@ class Experiment:
         Returns:
             Dict of score metrics
         """
-        maze_array = np.array([
-            [0, 0, 1, 0],
-            [1, 0, 1, 0],
-            [0, 0, 0, 0],
-            [0, 1, 1, 0]
-        ])
-
-        env = BasicMaze(maze=maze_array, start_cell=(0, 0), goal_cell=(3, 3))
+        env:BasicMaze = self.maze_scheduler.maze
 
         if self.agent_type == AgentType.Q_LEARNING:
             print("Using Q-learning agent")
@@ -111,12 +106,8 @@ class Experiment:
 
 
     def create_dashboard(self, experiment_result: ExperimentResult):
-        maze = np.array([
-            [0, 0, 1, 0],
-            [1, 0, 1, 0],
-            [0, 0, 0, 0],
-            [0, 1, 1, 0]
-        ])
+        maze = self.maze_scheduler.maze
+
         # --- 5. Create Dash App ---
         app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
