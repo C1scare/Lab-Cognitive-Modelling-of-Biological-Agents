@@ -4,6 +4,7 @@ from typing import Tuple, Sequence
 from maze.basic_maze import Action
 from agents.base_agent import BaseAgent
 from training.hyperparameter import Hyperparameter
+from maze.basic_maze import BasicMaze
 
 
 class BayesianQLearningAgent(BaseAgent):
@@ -229,3 +230,24 @@ class BayesianQLearningAgent(BaseAgent):
         row, col = state
         action_id = action.value
         return self.q_dist_table[row, col, action_id, 0], self.q_dist_table[row, col, action_id, 1]
+    
+    def transform_q_dist_map(self, maze:BasicMaze, variance: bool=False) -> dict[Tuple[Tuple[int, int], Tuple[int, int]], float]:
+        """
+        Transform the Q-value means into a dictionary mapping (state, action) pairs to their mean Q-values.
+        
+        Returns:
+            dict[Tuple[Tuple[int, int], Tuple[int, int]], float]: Mean Q-values for each (state, action) pair.
+        """
+        q_dist_map = {}
+        for x in range(self.q_dist_table.shape[0]):
+            for y in range(self.q_dist_table.shape[1]):
+                state = (x, y)
+                for action in self.action_space:
+                    delta = maze.actions[action]
+                    next_x = max(0, min(self.q_dist_table.shape[0] - 1, x + delta[0]))
+                    next_y = max(0, min(self.q_dist_table.shape[1] - 1, y + delta[1]))
+                    next_state = (next_x, next_y)
+                    q_mean_value:float = self.q_dist_table[x, y, action.value, 0 if not variance else 1]
+                    q_dist_map[(state, next_state)] = q_mean_value
+        return q_dist_map
+

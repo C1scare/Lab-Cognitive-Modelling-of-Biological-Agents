@@ -1,3 +1,5 @@
+#from pydantic import BaseModel, Field
+from typing import List, Tuple, Dict, Union
 import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
@@ -11,6 +13,18 @@ import dash_bootstrap_components as dbc
 from training.train_script import ExperimentResult
 from training.experiment import Experiment
 
+# Helper function to safely get min/max for normalization
+def get_global_min_max(history_dict_or_list: Union[Dict[int, Dict[Tuple[Tuple[int, int], Tuple[int, int]], float]], List[float]]):
+    all_values = []
+    if isinstance(history_dict_or_list, dict):
+        for episode_data in history_dict_or_list.values():
+            all_values.extend(episode_data.values())
+    elif isinstance(history_dict_or_list, list):
+        all_values = history_dict_or_list # Directly use the list if it's already a list of values
+
+    if not all_values:
+        return 0, 1 # Default to [0, 1] if no data
+    return min(all_values), max(all_values)
 
 class MazeVisualizer:
     """
@@ -18,97 +32,42 @@ class MazeVisualizer:
     including episode-specific views and averaged views across maze configurations.
     """
 
-    def create_maze_trajectory_figure(self, maze: np.ndarray, experiment_result: 'ExperimentResult') -> go.Figure:
-        """
-        [DEPRECATED/MODIFIED] This function is now superseded by the new averaged views.
-        Kept for reference but not directly used in the new dashboard structure.
-        The core logic for plotting transitions is reused in the new functions.
-        """
-        rows, cols = maze.shape
-        fig = go.Figure()
+    def _create_heatmap_trace(self, data: Dict[Tuple[Tuple[int, int], Tuple[int, int]], float],
+                              maze_shape: Tuple[int, int], min_val: float, max_val: float,
+                              title: str, colorscale: str) -> go.Heatmap:
+        rows, cols = maze_shape
+        heatmap_grid = np.zeros(maze_shape)
+        
+        # Populate heatmap grid with values based on states
+        # For transitions ( (r1, c1), (r2, c2) ), we'll associate the value with (r1, c1)
+        # If multiple transitions start from the same state, average their values
+        state_values = defaultdict(list)
+        for (r_curr, c_curr), (r_next, c_next) in data:
+            state_values[(r_curr, c_curr)].append(data[((r_curr, c_curr), (r_next, c_next))])
 
-        fig.add_trace(
-            go.Heatmap(
-                z=maze,
-                colorscale=[[0.0, 'white'], [0.333, 'gray'], [0.666, 'green'], [1.0, 'red']],
-                zmin=0, zmax=3,
-                showscale=False,
-                name='Maze Grid'
-            )
+        for (r, c), values in state_values.items():
+            heatmap_grid[r, c] = np.mean(values)
+
+        return go.Heatmap(
+            z=heatmap_grid,
+            x=np.arange(cols),
+            y=np.arange(rows),
+            colorscale=colorscale,
+            zmin=min_val,
+            zmax=max_val,
+            showscale=False,
+            name=title
         )
-
-        transition_counts = Counter()
-        for episode, trajectory_data in experiment_result.trajectory_history.items():
-            for current_state, next_state in trajectory_data:
-                transition_counts[(current_state, next_state)] += 1
-
-        max_count = max(transition_counts.values()) if transition_counts else 1
-        colorscale_plasma = px.colors.sequential.Plasma
-
-        for (current_y, current_x), (next_y, next_x) in transition_counts:
-            count = transition_counts[((current_y, current_x), (next_y, next_x))]
-            color_idx = min(int((count / max_count) * (len(colorscale_plasma) - 1)), len(colorscale_plasma) - 1)
-            edge_color = colorscale_plasma[color_idx]
-            line_width = 1 + (count / max_count) * 5
-
-            fig.add_trace(
-                go.Scatter(
-                    x=[current_x, next_x],
-                    y=[current_y, next_y],
-                    mode='lines',
-                    line=dict(color=edge_color, width=line_width),
-                    hoverinfo='text',
-                    hovertext=f"Transition: ({current_y},{current_x}) -> ({next_y},{next_x})<br>Frequency: {count}",
-                    showlegend=False,
-                    name=f'Transition from ({current_y},{current_x}) to ({next_y},{next_x})'
-                )
-            )
-
-        start_y, start_x = np.where(maze == 2)
-        end_y, end_x = np.where(maze == 3)
-
-        if start_y.size > 0:
-            fig.add_trace(go.Scatter(
-                x=[start_x[0]], y=[start_y[0]], mode='markers',
-                marker=dict(symbol='star', size=15, color='green', line=dict(width=1, color='black')),
-                name='Start', hoverinfo='name', showlegend=False
-            ))
-
-        if end_y.size > 0:
-            fig.add_trace(go.Scatter(
-                x=[end_x[0]], y=[end_y[0]], mode='markers',
-                marker=dict(symbol='star', size=15, color='red', line=dict(width=1, color='black')),
-                name='End', hoverinfo='name', showlegend=False
-            ))
-
-        fig.update_layout(
-            title="Maze Trajectories with Transition Frequencies",
-            xaxis=dict(
-                title="X-coordinate", tickmode='array', tickvals=np.arange(cols),
-                ticktext=[str(i) for i in np.arange(cols)], range=[-0.5, cols - 0.5],
-                showgrid=True, zeroline=False
-            ),
-            yaxis=dict(
-                title="Y-coordinate", tickmode='array', tickvals=np.arange(rows),
-                ticktext=[str(i) for i in np.arange(rows)], autorange='reversed',
-                range=[rows - 0.5, -0.5], showgrid=True, zeroline=False,
-                scaleanchor="x", scaleratio=1
-            ),
-            plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
-            margin=dict(l=40, r=40, t=40, b=40)
-        )
-        return fig
 
     def create_episode_view_with_slider(self, experiment_result: ExperimentResult) -> go.Figure:
         """
-        Creates a Plotly figure with a slider to select and display individual episode trajectories.
-        Each frame shows the maze, start point, and the trajectory for the selected episode.
+        Creates a Plotly figure with a slider to select and display individual episode trajectories,
+        along with Q-mean, curiosity, and uncertainty heatmaps for that episode.
         """
         fig = go.Figure()
         frames = []
         steps = []
 
-        # Get all unique episode numbers and sort them for consistent slider order
         sorted_episodes = sorted(experiment_result.trajectory_history.keys())
 
         if not sorted_episodes:
@@ -116,7 +75,6 @@ class MazeVisualizer:
                               xaxis_visible=False, yaxis_visible=False)
             return fig
 
-        # Determine max rows/cols across all mazes to ensure consistent plot sizing across frames
         max_rows = 0
         max_cols = 0
         for episode in sorted_episodes:
@@ -129,7 +87,11 @@ class MazeVisualizer:
                 print(f"Warning: Maze history missing for episode {episode}. Skipping.")
                 continue
 
-        # Create frames for each episode
+        # Calculate global min/max for normalization across all episodes
+        q_mean_min, q_mean_max = get_global_min_max(experiment_result.q_mean_history)
+        curiosity_min, curiosity_max = get_global_min_max(experiment_result.curiosity_history)
+        uncertainty_min, uncertainty_max = get_global_min_max(experiment_result.uncertainty_history)
+
         for i, episode in enumerate(sorted_episodes):
             if episode not in experiment_result.maze_history or episode not in experiment_result.trajectory_history:
                 continue
@@ -137,21 +99,13 @@ class MazeVisualizer:
             maze_obj, start_location = experiment_result.maze_history[episode]
             maze = maze_obj.maze
             trajectory = experiment_result.trajectory_history[episode]
+            q_mean_data = experiment_result.q_mean_history.get(episode, {})
+            curiosity_data = experiment_result.curiosity_history.get(episode, {})
+            uncertainty_data = experiment_result.uncertainty_history.get(episode, {})
 
             current_frame_data = []
 
-            current_frame_data.append(
-                go.Heatmap(
-                    z=maze,
-                    colorscale=[
-                        [0.0, 'white'], [0.333, 'gray'], [0.666, 'green'], [1.0, 'red']
-                    ],
-                    zmin=0, zmax=3,
-                    showscale=False,
-                    name='Maze Grid'
-                )
-            )
-
+            # Subplot 1: Trajectory
             line_x = []
             line_y = []
             hover_lines = []
@@ -161,50 +115,66 @@ class MazeVisualizer:
                 hover_lines.append(f"Episode: {episode}<br>Step: {j}<br>Transition: ({current_state[0]},{current_state[1]}) -> ({next_state[0]},{next_state[1]})")
 
             current_frame_data.append(
-                go.Scatter(
-                    x=line_x,
-                    y=line_y,
-                    mode='lines',
-                    line=dict(color='blue', width=2, dash='solid'),
-                    name=f'Episode {episode} Path Lines',
-                    hoverinfo='text',
-                    hovertext=hover_lines,
-                    showlegend=False
+                go.Heatmap(
+                    z=maze,
+                    colorscale=[[0.0, 'white'], [0.333, 'gray'], [0.666, 'green'], [1.0, 'red']],
+                    zmin=0, zmax=3, showscale=False, name='Maze Grid',
+                    xaxis='x1', yaxis='y1'
                 )
             )
-
+            current_frame_data.append(
+                go.Scatter(
+                    x=line_x, y=line_y, mode='lines',
+                    line=dict(color='blue', width=2, dash='solid'),
+                    name=f'Episode {episode} Path Lines', hoverinfo='text', hovertext=hover_lines, showlegend=False,
+                    xaxis='x1', yaxis='y1'
+                )
+            )
             start_y, start_x = np.where(maze == 2)
             end_y, end_x = np.where(maze == 3)
-
             if start_y.size > 0:
                 current_frame_data.append(go.Scatter(
                     x=[start_x[0]], y=[start_y[0]], mode='markers',
                     marker=dict(symbol='star', size=15, color='green', line=dict(width=1, color='black')),
-                    name='Start', hoverinfo='name', showlegend=False
+                    name='Start', hoverinfo='name', showlegend=False,
+                    xaxis='x1', yaxis='y1'
                 ))
-
             if end_y.size > 0:
                 current_frame_data.append(go.Scatter(
                     x=[end_x[0]], y=[end_y[0]], mode='markers',
                     marker=dict(symbol='star', size=15, color='red', line=dict(width=1, color='black')),
-                    name='End', hoverinfo='name', showlegend=False
+                    name='End', hoverinfo='name', showlegend=False,
+                    xaxis='x1', yaxis='y1'
                 ))
 
+            # Subplot 2: Q-Mean Heatmap
+            current_frame_data.append(self._create_heatmap_trace(
+                q_mean_data, maze.shape, q_mean_min, q_mean_max, 'Q-Mean', 'Viridis'
+            ).update(xaxis='x2', yaxis='y2'))
+
+            # Subplot 3: Curiosity Heatmap
+            current_frame_data.append(self._create_heatmap_trace(
+                curiosity_data, maze.shape, curiosity_min, curiosity_max, 'Curiosity', 'Plasma'
+            ).update(xaxis='x3', yaxis='y3'))
+
+            # Subplot 4: Uncertainty Heatmap
+            current_frame_data.append(self._create_heatmap_trace(
+                uncertainty_data, maze.shape, uncertainty_min, uncertainty_max, 'Uncertainty', 'Cividis'
+            ).update(xaxis='x4', yaxis='y4'))
+
             frames.append(go.Frame(data=current_frame_data, name=str(episode), layout=go.Layout(
-                title=f"Episode {episode} Trajectory",
-                xaxis=dict(
-                    title="X-coordinate", tickmode='array', tickvals=np.arange(max_cols),
-                    ticktext=[str(j) for j in np.arange(max_cols)], range=[-0.5, max_cols - 0.5],
-                    showgrid=True, zeroline=False
-                ),
-                yaxis=dict(
-                    title="Y-coordinate", tickmode='array', tickvals=np.arange(max_rows),
-                    ticktext=[str(j) for j in np.arange(max_rows)], autorange='reversed',
-                    range=[max_rows - 0.5, -0.5], showgrid=True, zeroline=False,
-                    scaleanchor="x", scaleratio=1
-                ),
+                title=f"Episode {episode} Trajectory & Metrics",
+                grid=dict(rows=2, columns=2, pattern="independent"),
+                xaxis1=dict(title="X", range=[-0.5, max_cols - 0.5], showgrid=True, zeroline=False, scaleanchor="y1", scaleratio=1),
+                yaxis1=dict(title="Y", range=[max_rows - 0.5, -0.5], showgrid=True, zeroline=False, scaleanchor="x1", scaleratio=1),
+                xaxis2=dict(title="X", range=[-0.5, max_cols - 0.5], showgrid=True, zeroline=False, scaleanchor="y2", scaleratio=1),
+                yaxis2=dict(title="Y", range=[max_rows - 0.5, -0.5], showgrid=True, zeroline=False, scaleanchor="x2", scaleratio=1),
+                xaxis3=dict(title="X", range=[-0.5, max_cols - 0.5], showgrid=True, zeroline=False, scaleanchor="y3", scaleratio=1),
+                yaxis3=dict(title="Y", range=[max_rows - 0.5, -0.5], showgrid=True, zeroline=False, scaleanchor="x3", scaleratio=1),
+                xaxis4=dict(title="X", range=[-0.5, max_cols - 0.5], showgrid=True, zeroline=False, scaleanchor="y4", scaleratio=1),
+                yaxis4=dict(title="Y", range=[max_rows - 0.5, -0.5], showgrid=True, zeroline=False, scaleanchor="x4", scaleratio=1),
                 plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
-                margin=dict(l=40, r=40, t=40, b=40)
+                margin=dict(l=40, r=40, t=100, b=40)
             )))
 
             step = dict(
@@ -214,21 +184,18 @@ class MazeVisualizer:
             )
             steps.append(step)
 
+        # Initial frame setup
         initial_episode = sorted_episodes[0]
         initial_maze_obj, initial_start_location = experiment_result.maze_history[initial_episode]
         initial_maze = initial_maze_obj.maze
         initial_trajectory = experiment_result.trajectory_history[initial_episode]
+        initial_q_mean_data = experiment_result.q_mean_history.get(initial_episode, {})
+        initial_curiosity_data = experiment_result.curiosity_history.get(initial_episode, {})
+        initial_uncertainty_data = experiment_result.uncertainty_history.get(initial_episode, {})
 
         initial_data = []
 
-        initial_data.append(
-            go.Heatmap(
-                z=initial_maze,
-                colorscale=[[0.0, 'white'], [0.333, 'gray'], [0.666, 'green'], [1.0, 'red']],
-                zmin=0, zmax=3, showscale=False, name='Maze Grid'
-            )
-        )
-
+        # Initial Trajectory subplot
         initial_line_x = []
         initial_line_y = []
         initial_hover_lines = []
@@ -238,52 +205,69 @@ class MazeVisualizer:
             initial_hover_lines.append(f"Episode: {initial_episode}<br>Step: {j}<br>Transition: ({current_state[0]},{current_state[1]}) -> ({next_state[0]},{next_state[1]})")
 
         initial_data.append(
-            go.Scatter(
-                x=initial_line_x,
-                y=initial_line_y,
-                mode='lines',
-                line=dict(color='blue', width=2, dash='solid'),
-                name=f'Episode {initial_episode} Path Lines',
-                hoverinfo='text',
-                hovertext=initial_hover_lines,
-                showlegend=False
+            go.Heatmap(
+                z=initial_maze,
+                colorscale=[[0.0, 'white'], [0.333, 'gray'], [0.666, 'green'], [1.0, 'red']],
+                zmin=0, zmax=3, showscale=False, name='Maze Grid',
+                xaxis='x1', yaxis='y1'
             )
         )
-
+        initial_data.append(
+            go.Scatter(
+                x=initial_line_x, y=initial_line_y, mode='lines',
+                line=dict(color='blue', width=2, dash='solid'),
+                name=f'Episode {initial_episode} Path Lines', hoverinfo='text', hovertext=initial_hover_lines, showlegend=False,
+                xaxis='x1', yaxis='y1'
+            )
+        )
         initial_start_y, initial_start_x = np.where(initial_maze == 2)
         initial_end_y, initial_end_x = np.where(initial_maze == 3)
-
         if initial_start_y.size > 0:
             initial_data.append(go.Scatter(
                 x=[initial_start_x[0]], y=[initial_start_y[0]], mode='markers',
                 marker=dict(symbol='star', size=15, color='green', line=dict(width=1, color='black')),
-                name='Start', hoverinfo='name', showlegend=False
+                name='Start', hoverinfo='name', showlegend=False,
+                xaxis='x1', yaxis='y1'
             ))
         if initial_end_y.size > 0:
             initial_data.append(go.Scatter(
                 x=[initial_end_x[0]], y=[initial_end_y[0]], mode='markers',
                 marker=dict(symbol='star', size=15, color='red', line=dict(width=1, color='black')),
-                name='End', hoverinfo='name', showlegend=False
+                name='End', hoverinfo='name', showlegend=False,
+                xaxis='x1', yaxis='y1'
             ))
+
+        # Initial Q-Mean Heatmap
+        initial_data.append(self._create_heatmap_trace(
+            initial_q_mean_data, initial_maze.shape, q_mean_min, q_mean_max, 'Q-Mean', 'Viridis'
+        ).update(xaxis='x2', yaxis='y2'))
+
+        # Initial Curiosity Heatmap
+        initial_data.append(self._create_heatmap_trace(
+            initial_curiosity_data, initial_maze.shape, curiosity_min, curiosity_max, 'Curiosity', 'Plasma'
+        ).update(xaxis='x3', yaxis='y3'))
+
+        # Initial Uncertainty Heatmap
+        initial_data.append(self._create_heatmap_trace(
+            initial_uncertainty_data, initial_maze.shape, uncertainty_min, uncertainty_max, 'Uncertainty', 'Cividis'
+        ).update(xaxis='x4', yaxis='y4'))
 
         fig.add_traces(initial_data)
         fig.frames = frames
 
         fig.update_layout(
-            title=f"Episode {initial_episode} Trajectory",
-            xaxis=dict(
-                title="X-coordinate", tickmode='array', tickvals=np.arange(max_cols),
-                ticktext=[str(j) for j in np.arange(max_cols)], range=[-0.5, max_cols - 0.5],
-                showgrid=True, zeroline=False
-            ),
-            yaxis=dict(
-                title="Y-coordinate", tickmode='array', tickvals=np.arange(max_rows),
-                ticktext=[str(j) for j in np.arange(max_rows)], autorange='reversed',
-                range=[max_rows - 0.5, -0.5], showgrid=True, zeroline=False,
-                scaleanchor="x", scaleratio=1
-            ),
+            title=f"Episode {initial_episode} Trajectory & Metrics",
+            grid=dict(rows=2, columns=2, pattern="independent"),
+            xaxis1=dict(title="X", tickmode='array', tickvals=np.arange(max_cols), ticktext=[str(j) for j in np.arange(max_cols)], range=[-0.5, max_cols - 0.5], showgrid=True, zeroline=False, scaleanchor="y1", scaleratio=1),
+            yaxis1=dict(title="Y", tickmode='array', tickvals=np.arange(max_rows), ticktext=[str(j) for j in np.arange(max_rows)], autorange='reversed', range=[max_rows - 0.5, -0.5], showgrid=True, zeroline=False, scaleanchor="x1", scaleratio=1),
+            xaxis2=dict(title="X", tickmode='array', tickvals=np.arange(max_cols), ticktext=[str(j) for j in np.arange(max_cols)], range=[-0.5, max_cols - 0.5], showgrid=True, zeroline=False, scaleanchor="y2", scaleratio=1),
+            yaxis2=dict(title="Y", tickmode='array', tickvals=np.arange(max_rows), ticktext=[str(j) for j in np.arange(max_rows)], autorange='reversed', range=[max_rows - 0.5, -0.5], showgrid=True, zeroline=False, scaleanchor="x2", scaleratio=1),
+            xaxis3=dict(title="X", tickmode='array', tickvals=np.arange(max_cols), ticktext=[str(j) for j in np.arange(max_cols)], range=[-0.5, max_cols - 0.5], showgrid=True, zeroline=False, scaleanchor="y3", scaleratio=1),
+            yaxis3=dict(title="Y", tickmode='array', tickvals=np.arange(max_rows), ticktext=[str(j) for j in np.arange(max_rows)], autorange='reversed', range=[max_rows - 0.5, -0.5], showgrid=True, zeroline=False, scaleanchor="x3", scaleratio=1),
+            xaxis4=dict(title="X", tickmode='array', tickvals=np.arange(max_cols), ticktext=[str(j) for j in np.arange(max_cols)], range=[-0.5, max_cols - 0.5], showgrid=True, zeroline=False, scaleanchor="y4", scaleratio=1),
+            yaxis4=dict(title="Y", tickmode='array', tickvals=np.arange(max_rows), ticktext=[str(j) for j in np.arange(max_rows)], autorange='reversed', range=[max_rows - 0.5, -0.5], showgrid=True, zeroline=False, scaleanchor="x4", scaleratio=1),
             plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
-            margin=dict(l=40, r=40, t=40, b=40),
+            margin=dict(l=40, r=40, t=100, b=40),
             updatemenus=[
                 dict(
                     type="buttons",
@@ -314,9 +298,9 @@ class MazeVisualizer:
 
     def create_averaged_trajectory_view(self, experiment_result: ExperimentResult, include_maze: bool) -> go.Figure:
         """
-        Creates a Plotly figure visualizing averaged trajectories for different maze configurations.
-        Includes a slider to select between unique maze configurations.
-        Optionally includes the maze heatmap.
+        Creates a Plotly figure visualizing averaged trajectories and averaged Q-mean, curiosity,
+        and uncertainty heatmaps for different maze configurations. Includes a slider to select
+        between unique maze configurations. Optionally includes the maze heatmap.
         """
         fig = go.Figure()
         frames = []
@@ -349,26 +333,65 @@ class MazeVisualizer:
             max_rows = max(max_rows, rows)
             max_cols = max(max_cols, cols)
 
+        # Calculate global min/max for normalization across all configurations
+        all_q_mean_values = []
+        all_curiosity_values = []
+        all_uncertainty_values = []
+
+        for config_key in unique_maze_keys:
+            associated_episodes = maze_configs[config_key]
+            for episode in associated_episodes:
+                if episode in experiment_result.q_mean_history:
+                    all_q_mean_values.extend(experiment_result.q_mean_history[episode].values())
+                if episode in experiment_result.curiosity_history:
+                    all_curiosity_values.extend(experiment_result.curiosity_history[episode].values())
+                if episode in experiment_result.uncertainty_history:
+                    all_uncertainty_values.extend(experiment_result.uncertainty_history[episode].values())
+        
+        q_mean_min, q_mean_max = get_global_min_max(all_q_mean_values)
+        curiosity_min, curiosity_max = get_global_min_max(all_curiosity_values)
+        uncertainty_min, uncertainty_max = get_global_min_max(all_uncertainty_values)
+
+
         for i, config_key in enumerate(unique_maze_keys):
             maze_data, start_location = maze_data_map[config_key]
             associated_episodes = maze_configs[config_key]
 
             aggregated_transitions = Counter()
+            aggregated_q_mean = defaultdict(list)
+            aggregated_curiosity = defaultdict(list)
+            aggregated_uncertainty = defaultdict(list)
+
             for episode in associated_episodes:
                 if episode in experiment_result.trajectory_history:
                     for current_state, next_state in experiment_result.trajectory_history[episode]:
                         aggregated_transitions[(current_state, next_state)] += 1
+                
+                if episode in experiment_result.q_mean_history:
+                    for transition, value in experiment_result.q_mean_history[episode].items():
+                        aggregated_q_mean[transition].append(value)
+                if episode in experiment_result.curiosity_history:
+                    for transition, value in experiment_result.curiosity_history[episode].items():
+                        aggregated_curiosity[transition].append(value)
+                if episode in experiment_result.uncertainty_history:
+                    for transition, value in experiment_result.uncertainty_history[episode].items():
+                        aggregated_uncertainty[transition].append(value)
+            
+            # Average the aggregated metric values
+            averaged_q_mean = {trans: np.mean(vals) for trans, vals in aggregated_q_mean.items()}
+            averaged_curiosity = {trans: np.mean(vals) for trans, vals in aggregated_curiosity.items()}
+            averaged_uncertainty = {trans: np.mean(vals) for trans, vals in aggregated_uncertainty.items()}
 
             current_frame_data = []
 
+            # Subplot 1: Averaged Trajectory
             if include_maze:
                 current_frame_data.append(
                     go.Heatmap(
                         z=maze_data,
-                        colorscale=[
-                            [0.0, 'white'], [0.333, 'gray'], [0.666, 'green'], [1.0, 'red']
-                        ],
-                        zmin=0, zmax=3, showscale=False, name='Maze Grid'
+                        colorscale=[[0.0, 'white'], [0.333, 'gray'], [0.666, 'green'], [1.0, 'red']],
+                        zmin=0, zmax=3, showscale=False, name='Maze Grid',
+                        xaxis='x1', yaxis='y1'
                     )
                 )
 
@@ -383,13 +406,10 @@ class MazeVisualizer:
 
                 current_frame_data.append(
                     go.Scatter(
-                        x=[current_x, next_x],
-                        y=[current_y, next_y],
-                        mode='lines',
+                        x=[current_x, next_x], y=[current_y, next_y], mode='lines',
                         line=dict(color=edge_color, width=line_width),
-                        hoverinfo='text',
-                        hovertext=f"Transition: ({current_y},{current_x}) -> ({next_y},{next_x})<br>Frequency: {count}",
-                        showlegend=False
+                        hoverinfo='text', hovertext=f"Transition: ({current_y},{current_x}) -> ({next_y},{next_x})<br>Frequency: {count}",
+                        showlegend=False, xaxis='x1', yaxis='y1'
                     )
                 )
 
@@ -400,31 +420,45 @@ class MazeVisualizer:
                 current_frame_data.append(go.Scatter(
                     x=[start_x[0]], y=[start_y[0]], mode='markers',
                     marker=dict(symbol='star', size=15, color='green', line=dict(width=1, color='black')),
-                    name='Start', hoverinfo='name', showlegend=False
+                    name='Start', hoverinfo='name', showlegend=False,
+                    xaxis='x1', yaxis='y1'
                 ))
-
             if end_y.size > 0:
                 current_frame_data.append(go.Scatter(
                     x=[end_x[0]], y=[end_y[0]], mode='markers',
                     marker=dict(symbol='star', size=15, color='red', line=dict(width=1, color='black')),
-                    name='End', hoverinfo='name', showlegend=False
+                    name='End', hoverinfo='name', showlegend=False,
+                    xaxis='x1', yaxis='y1'
                 ))
 
+            # Subplot 2: Averaged Q-Mean Heatmap
+            current_frame_data.append(self._create_heatmap_trace(
+                averaged_q_mean, maze_data.shape, q_mean_min, q_mean_max, 'Averaged Q-Mean', 'Viridis'
+            ).update(xaxis='x2', yaxis='y2'))
+
+            # Subplot 3: Averaged Curiosity Heatmap
+            current_frame_data.append(self._create_heatmap_trace(
+                averaged_curiosity, maze_data.shape, curiosity_min, curiosity_max, 'Averaged Curiosity', 'Plasma'
+            ).update(xaxis='x3', yaxis='y3'))
+
+            # Subplot 4: Averaged Uncertainty Heatmap
+            current_frame_data.append(self._create_heatmap_trace(
+                averaged_uncertainty, maze_data.shape, uncertainty_min, uncertainty_max, 'Averaged Uncertainty', 'Cividis'
+            ).update(xaxis='x4', yaxis='y4'))
+
             frames.append(go.Frame(data=current_frame_data, name=str(i), layout=go.Layout(
-                title=f"Averaged Trajectory for Maze Config {i+1} (Episodes: {len(associated_episodes)})",
-                xaxis=dict(
-                    title="X-coordinate", tickmode='array', tickvals=np.arange(max_cols),
-                    ticktext=[str(j) for j in np.arange(max_cols)], range=[-0.5, max_cols - 0.5],
-                    showgrid=True, zeroline=False
-                ),
-                yaxis=dict(
-                    title="Y-coordinate", tickmode='array', tickvals=np.arange(max_rows),
-                    ticktext=[str(j) for j in np.arange(max_rows)], autorange='reversed',
-                    range=[max_rows - 0.5, -0.5], showgrid=True, zeroline=False,
-                    scaleanchor="x", scaleratio=1
-                ),
+                title=f"Averaged Trajectory & Metrics for Maze Config {i+1} (Episodes: {len(associated_episodes)})",
+                grid=dict(rows=2, columns=2, pattern="independent"),
+                xaxis1=dict(title="X", range=[-0.5, max_cols - 0.5], showgrid=True, zeroline=False, scaleanchor="y1", scaleratio=1),
+                yaxis1=dict(title="Y", range=[max_rows - 0.5, -0.5], showgrid=True, zeroline=False, scaleanchor="x1", scaleratio=1),
+                xaxis2=dict(title="X", range=[-0.5, max_cols - 0.5], showgrid=True, zeroline=False, scaleanchor="y2", scaleratio=1),
+                yaxis2=dict(title="Y", range=[max_rows - 0.5, -0.5], showgrid=True, zeroline=False, scaleanchor="x2", scaleratio=1),
+                xaxis3=dict(title="X", range=[-0.5, max_cols - 0.5], showgrid=True, zeroline=False, scaleanchor="y3", scaleratio=1),
+                yaxis3=dict(title="Y", range=[max_rows - 0.5, -0.5], showgrid=True, zeroline=False, scaleanchor="x3", scaleratio=1),
+                xaxis4=dict(title="X", range=[-0.5, max_cols - 0.5], showgrid=True, zeroline=False, scaleanchor="y4", scaleratio=1),
+                yaxis4=dict(title="Y", range=[max_rows - 0.5, -0.5], showgrid=True, zeroline=False, scaleanchor="x4", scaleratio=1),
                 plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
-                margin=dict(l=40, r=40, t=40, b=40)
+                margin=dict(l=40, r=40, t=100, b=40)
             )))
 
             step_label = f"Maze {i+1}"
@@ -435,15 +469,33 @@ class MazeVisualizer:
             )
             steps.append(step)
 
+        # Initial frame setup for averaged view
         initial_config_key = unique_maze_keys[0]
         initial_maze_data, initial_start_location = maze_data_map[initial_config_key]
         initial_associated_episodes = maze_configs[initial_config_key]
 
         initial_aggregated_transitions = Counter()
+        initial_aggregated_q_mean = defaultdict(list)
+        initial_aggregated_curiosity = defaultdict(list)
+        initial_aggregated_uncertainty = defaultdict(list)
+
         for episode in initial_associated_episodes:
             if episode in experiment_result.trajectory_history:
                 for current_state, next_state in experiment_result.trajectory_history[episode]:
                     initial_aggregated_transitions[(current_state, next_state)] += 1
+            if episode in experiment_result.q_mean_history:
+                for transition, value in experiment_result.q_mean_history[episode].items():
+                    initial_aggregated_q_mean[transition].append(value)
+            if episode in experiment_result.curiosity_history:
+                for transition, value in experiment_result.curiosity_history[episode].items():
+                    initial_aggregated_curiosity[transition].append(value)
+            if episode in experiment_result.uncertainty_history:
+                for transition, value in experiment_result.uncertainty_history[episode].items():
+                    initial_aggregated_uncertainty[transition].append(value)
+        
+        initial_averaged_q_mean = {trans: np.mean(vals) for trans, vals in initial_aggregated_q_mean.items()}
+        initial_averaged_curiosity = {trans: np.mean(vals) for trans, vals in initial_aggregated_curiosity.items()}
+        initial_averaged_uncertainty = {trans: np.mean(vals) for trans, vals in initial_aggregated_uncertainty.items()}
 
         initial_data = []
 
@@ -452,7 +504,8 @@ class MazeVisualizer:
                 go.Heatmap(
                     z=initial_maze_data,
                     colorscale=[[0.0, 'white'], [0.333, 'gray'], [0.666, 'green'], [1.0, 'red']],
-                    zmin=0, zmax=3, showscale=False, name='Maze Grid'
+                    zmin=0, zmax=3, showscale=False, name='Maze Grid',
+                    xaxis='x1', yaxis='y1'
                 )
             )
 
@@ -467,13 +520,10 @@ class MazeVisualizer:
 
             initial_data.append(
                 go.Scatter(
-                    x=[current_x, next_x],
-                    y=[current_y, next_y],
-                    mode='lines',
+                    x=[current_x, next_x], y=[current_y, next_y], mode='lines',
                     line=dict(color=edge_color, width=line_width),
-                    hoverinfo='text',
-                    hovertext=f"Transition: ({current_y},{current_x}) -> ({next_y},{next_x})<br>Frequency: {count}",
-                    showlegend=False
+                    hoverinfo='text', hovertext=f"Transition: ({current_y},{current_x}) -> ({next_y},{next_x})<br>Frequency: {count}",
+                    showlegend=False, xaxis='x1', yaxis='y1'
                 )
             )
 
@@ -484,34 +534,46 @@ class MazeVisualizer:
             initial_data.append(go.Scatter(
                 x=[initial_start_x[0]], y=[initial_start_y[0]], mode='markers',
                 marker=dict(symbol='star', size=15, color='green', line=dict(width=1, color='black')),
-                name='Start', hoverinfo='name', showlegend=False
+                name='Start', hoverinfo='name', showlegend=False,
+                xaxis='x1', yaxis='y1'
             ))
         if initial_end_y.size > 0:
             initial_data.append(go.Scatter(
-                x=[end_x[0]], y=[end_y[0]], mode='markers',
+                x=[initial_end_x[0]], y=[initial_end_y[0]], mode='markers',
                 marker=dict(symbol='star', size=15, color='red', line=dict(width=1, color='black')),
-                name='End', hoverinfo='name', showlegend=False
+                name='End', hoverinfo='name', showlegend=False,
+                xaxis='x1', yaxis='y1'
             ))
+
+        initial_data.append(self._create_heatmap_trace(
+            initial_averaged_q_mean, initial_maze_data.shape, q_mean_min, q_mean_max, 'Averaged Q-Mean', 'Viridis'
+        ).update(xaxis='x2', yaxis='y2'))
+
+        initial_data.append(self._create_heatmap_trace(
+            initial_averaged_curiosity, initial_maze_data.shape, curiosity_min, curiosity_max, 'Averaged Curiosity', 'Plasma'
+        ).update(xaxis='x3', yaxis='y3'))
+
+        initial_data.append(self._create_heatmap_trace(
+            initial_averaged_uncertainty, initial_maze_data.shape, uncertainty_min, uncertainty_max, 'Averaged Uncertainty', 'Cividis'
+        ).update(xaxis='x4', yaxis='y4'))
 
         fig.add_traces(initial_data)
         fig.frames = frames
 
         title_prefix = "Averaged Trajectory" if include_maze else "Averaged Trajectory (No Maze)"
         fig.update_layout(
-            title=f"{title_prefix} for Maze Config 1 (Episodes: {len(initial_associated_episodes)})",
-            xaxis=dict(
-                title="X-coordinate", tickmode='array', tickvals=np.arange(max_cols),
-                ticktext=[str(j) for j in np.arange(max_cols)], range=[-0.5, max_cols - 0.5],
-                showgrid=True, zeroline=False
-            ),
-            yaxis=dict(
-                title="Y-coordinate", tickmode='array', tickvals=np.arange(max_rows),
-                ticktext=[str(j) for j in np.arange(max_rows)], autorange='reversed',
-                range=[max_rows - 0.5, -0.5], showgrid=True, zeroline=False,
-                scaleanchor="x", scaleratio=1
-            ),
+            title=f"{title_prefix} & Metrics for Maze Config 1 (Episodes: {len(initial_associated_episodes)})",
+            grid=dict(rows=2, columns=2, pattern="independent"),
+            xaxis1=dict(title="X", tickmode='array', tickvals=np.arange(max_cols), ticktext=[str(j) for j in np.arange(max_cols)], range=[-0.5, max_cols - 0.5], showgrid=True, zeroline=False, scaleanchor="y1", scaleratio=1),
+            yaxis1=dict(title="Y", tickmode='array', tickvals=np.arange(max_rows), ticktext=[str(j) for j in np.arange(max_rows)], autorange='reversed', range=[max_rows - 0.5, -0.5], showgrid=True, zeroline=False, scaleanchor="x1", scaleratio=1),
+            xaxis2=dict(title="X", tickmode='array', tickvals=np.arange(max_cols), ticktext=[str(j) for j in np.arange(max_cols)], range=[-0.5, max_cols - 0.5], showgrid=True, zeroline=False, scaleanchor="y2", scaleratio=1),
+            yaxis2=dict(title="Y", tickmode='array', tickvals=np.arange(max_rows), ticktext=[str(j) for j in np.arange(max_rows)], autorange='reversed', range=[max_rows - 0.5, -0.5], showgrid=True, zeroline=False, scaleanchor="x2", scaleratio=1),
+            xaxis3=dict(title="X", tickmode='array', tickvals=np.arange(max_cols), ticktext=[str(j) for j in np.arange(max_cols)], range=[-0.5, max_cols - 0.5], showgrid=True, zeroline=False, scaleanchor="y3", scaleratio=1),
+            yaxis3=dict(title="Y", tickmode='array', tickvals=np.arange(max_rows), ticktext=[str(j) for j in np.arange(max_rows)], autorange='reversed', range=[max_rows - 0.5, -0.5], showgrid=True, zeroline=False, scaleanchor="x3", scaleratio=1),
+            xaxis4=dict(title="X", tickmode='array', tickvals=np.arange(max_cols), ticktext=[str(j) for j in np.arange(max_cols)], range=[-0.5, max_cols - 0.5], showgrid=True, zeroline=False, scaleanchor="y4", scaleratio=1),
+            yaxis4=dict(title="Y", tickmode='array', tickvals=np.arange(max_rows), ticktext=[str(j) for j in np.arange(max_rows)], autorange='reversed', range=[max_rows - 0.5, -0.5], showgrid=True, zeroline=False, scaleanchor="x4", scaleratio=1),
             plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
-            margin=dict(l=40, r=40, t=40, b=40),
+            margin=dict(l=40, r=40, t=100, b=40),
             updatemenus=[
                 dict(
                     type="buttons",
@@ -565,6 +627,58 @@ class MazeVisualizer:
             margin=dict(l=40, r=40, t=40, b=40)
         )
         return fig
+    
+    def create_uncertainty_figure(self, experiment_result: ExperimentResult) -> go.Figure:
+        """
+        Creates a Plotly figure visualizing the overall uncertainty over episodes.
+        """
+        uncertainty = experiment_result.uncertainties
+        fig = go.Figure()
+        fig.add_trace(
+            go.Scatter(
+                x=list(range(len(uncertainty))),
+                y=uncertainty,
+                mode='lines+markers',
+                name='Uncertainty',
+                line=dict(color='purple', width=2),
+                marker=dict(size=4)
+            )
+        )
+        fig.update_layout(
+            title="Overall Uncertainty Over Episodes",
+            xaxis_title="Episode",
+            yaxis_title="Uncertainty",
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            margin=dict(l=40, r=40, t=40, b=40)
+        )
+        return fig
+    
+    def create_curiosity_figure(self, experiment_result: ExperimentResult) -> go.Figure:
+        """
+        Creates a Plotly figure visualizing the overall curiosity over episodes.
+        """
+        curiosity = experiment_result.curiosity
+        fig = go.Figure()
+        fig.add_trace(
+            go.Scatter(
+                x=list(range(len(curiosity))),
+                y=curiosity,
+                mode='lines+markers',
+                name='Curiosity',
+                line=dict(color='purple', width=2),
+                marker=dict(size=4)
+            )
+        )
+        fig.update_layout(
+            title="Overall Curiosity Over Episodes",
+            xaxis_title="Episode",
+            yaxis_title="Curiosity",
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            margin=dict(l=40, r=40, t=40, b=40)
+        )
+        return fig
 
     def create_dashboard(self, experiment_result: ExperimentResult, experiment: Experiment) -> dash.Dash:
         """
@@ -595,25 +709,25 @@ class MazeVisualizer:
             dbc.Row(className="mb-4", children=[
                 dbc.Col(
                     dbc.Tabs(id="visualization-tabs", active_tab="tab-episode-view", children=[
-                        dbc.Tab(label="Episode Trajectory", tab_id="tab-episode-view", children=[
+                        dbc.Tab(label="Episode Trajectory & Metrics", tab_id="tab-episode-view", children=[
                             dcc.Graph(
                                 id='episode-trajectory-graph',
                                 figure=self.create_episode_view_with_slider(experiment_result),
-                                style={'height': '600px'}
+                                style={'height': '800px'} # Increased height for subplots
                             )
                         ]),
-                        dbc.Tab(label="Averaged Trajectory (with Maze)", tab_id="tab-averaged-with-maze", children=[
+                        dbc.Tab(label="Averaged Trajectory (with Maze) & Metrics", tab_id="tab-averaged-with-maze", children=[
                             dcc.Graph(
                                 id='averaged-trajectory-with-maze-graph',
                                 figure=self.create_averaged_trajectory_view(experiment_result, include_maze=True),
-                                style={'height': '600px'}
+                                style={'height': '800px'} # Increased height for subplots
                             )
                         ]),
-                        dbc.Tab(label="Averaged Trajectory (no Maze)", tab_id="tab-averaged-no-maze", children=[
+                        dbc.Tab(label="Averaged Trajectory (no Maze) & Metrics", tab_id="tab-averaged-no-maze", children=[
                             dcc.Graph(
                                 id='averaged-trajectory-no-maze-graph',
                                 figure=self.create_averaged_trajectory_view(experiment_result, include_maze=False),
-                                style={'height': '600px'}
+                                style={'height': '800px'} # Increased height for subplots
                             )
                         ]),
                     ]),
@@ -684,6 +798,29 @@ class MazeVisualizer:
                     ),
                     width=12 # Cumulative rewards takes full width below
                 )
+            ]),
+
+            dbc.Row(className="mb-4", children=[
+                dbc.Col(
+                    dcc.Graph(
+                        id='uncertainty-graph',
+                        figure=self.create_uncertainty_figure(experiment_result),
+                        style={'height': '400px'}
+                    ),
+                    width=12 # Uncertainty takes full width below
+                )
+            ]),
+
+            dbc.Row(className="mb-4", children=[
+                dbc.Col(
+                    dcc.Graph(
+                        id='curiosity-graph',
+                        figure=self.create_curiosity_figure(experiment_result),
+                        style={'height': '400px'}
+                    ),
+                    width=12 # Curiosity takes full width below
+                )
             ])
+
         ])
         return app
