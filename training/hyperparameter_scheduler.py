@@ -140,8 +140,8 @@ class HyperparameterScheduler:
                 "mu_init": trial.suggest_float("mu_init", *self.hyperparameter_ranges["mu_init"]),
                 "sigma_sq_init": trial.suggest_float("sigma_sq_init", *self.hyperparameter_ranges["sigma_sq_init"]),
                 "obs_noise_variance": trial.suggest_float("obs_noise_variance", *self.hyperparameter_ranges["obs_noise_variance"]),
-                "k_pn": trial.suggest_float("k_pn", *self.hyperparameter_ranges["k_pn"]),
-                "sigma_nn": trial.suggest_float("sigma_nn", *self.hyperparameter_ranges["sigma_nn"]),
+                "k_pn": trial.suggest_float("k_pn", *self.hyperparameter_ranges["k_pn"]) if self.noise_mode in [NoiseMode.PERCEPTUAL, NoiseMode.BOTH] else 0.0,
+                "sigma_nn": trial.suggest_float("sigma_nn", *self.hyperparameter_ranges["sigma_nn"]) if self.noise_mode in [NoiseMode.NEURAL, NoiseMode.BOTH] else 0.0,
                 "noise_mode": self.noise_mode
             }
 

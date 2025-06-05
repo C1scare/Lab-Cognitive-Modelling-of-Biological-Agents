@@ -50,13 +50,13 @@ def train_agent(
     env:BasicMaze = maze_scheduler.maze
     episode_rewards: List[float] = []
     uncertainties: List[float] = []
-    curiosity = [] if isinstance(agent, CuriousAgent) else None
+    curiosity = [] if isinstance(agent, CuriousAgent) else list(np.zeros(episodes))
     success_count = 0
     trajectory_history: dict[int, List[Tuple[Tuple[int, int],Tuple[int, int]]]] = {}
     maze_history: dict[int, Tuple[BasicMaze, Tuple[int,int]]] = {}
-    curiosity_history = {} if isinstance(agent, CuriousAgent) else None
-    uncertainty_history = {} if isinstance(agent, BayesianQLearningAgent) else None
-    q_mean_history = {} if isinstance(agent, BayesianQLearningAgent) else None
+    curiosity_history = {} if isinstance(agent, CuriousAgent) else {}
+    uncertainty_history = {} if isinstance(agent, BayesianQLearningAgent) else {}
+    q_mean_history = {} if isinstance(agent, BayesianQLearningAgent) else {}
 
 
     for episode in range(episodes):
@@ -99,7 +99,7 @@ def train_agent(
                 agent.decay_epsilon()
 
         episode_rewards.append(total_reward)
-        uncertainties.append(np.sum(agent.q_dist_table[:, :, :, 1], axis=(0, 1, 2)))
+        uncertainties.append(np.sum(agent.q_dist_table[:, :, :, 1], axis=(0, 1, 2))) if isinstance(agent, BayesianQLearningAgent) else None
         curiosity.append(np.sum(agent.curiosity, axis=(0, 1, 2))) if isinstance(agent, CuriousAgent) else None
 
 
