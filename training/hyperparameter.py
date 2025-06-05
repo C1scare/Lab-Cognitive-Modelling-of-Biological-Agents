@@ -26,5 +26,9 @@ class Hyperparameter(BaseModel):
     beta_U: Optional[float] = Field(default=None, description="Usefulness scaling factor for the usefulness component in curiosity-driven exploration.")
     beta_N: Optional[float] = Field(default=None, description="Novelty scaling factor for the novelty component in curiosity-driven exploration.")
 
+    alpha_w: Optional[float] = Field(default=None, description="Learning rate for the reward weights in SR-Dyna agent.")
+    alpha_sr: Optional[float] = Field(default=None, description="Learning rate for the successor representation in SR-Dyna agent.")
+    k: Optional[int] = Field(default=None, description="Number of transitions to replay from the buffer in each learning step for SR-Dyna agent.")
+
     episodes: Optional[int] = Field(default=500, description="Number of episodes for training the agent.")
     random_seed: Optional[int] = Field(default=42, description="Random seed for reproducibility.")
