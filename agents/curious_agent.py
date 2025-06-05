@@ -2,6 +2,7 @@ from agents.bayesian_q_learning import BayesianQLearningAgent
 import numpy as np
 from typing import Tuple, Sequence
 from maze.basic_maze import Action
+from maze.basic_maze import BasicMaze
 from training.hyperparameter import Hyperparameter
 import random
 
@@ -169,3 +170,26 @@ class CuriousAgent(BayesianQLearningAgent):
         y += self.calculate_curiosity(state, action, next_state, y, tau_sa_prior)
         self.bayesian_update(state, action, y, mu_sa_prior, tau_sa_prior)
         self.visited[state] += 1
+
+
+    def transform_curiosity_map(self, maze:BasicMaze) -> dict[Tuple[Tuple[int, int], Tuple[int, int]], float]:
+        """
+        Transform the curiosity map, which is based on state-action pairs, into a dictionary mapping
+        (state, next_state) pairs to curiosity values. This is useful for visualizing curiosity for transitions.
+
+        Returns:
+            dict[Tuple[Tuple[int, int], Tuple[int, int]], float]: Curiosity values for each (state, next_state) transition.
+        """
+        curiosity_map = {}
+        for x in range(self.curiosity.shape[0]):
+            for y in range(self.curiosity.shape[1]):
+                state = (x, y)
+                for action in self.action_space:
+                    delta = maze.actions[action]
+                    next_x = max(0, min(self.curiosity.shape[0] - 1, x + delta[0]))
+                    next_y = max(0, min(self.curiosity.shape[1] - 1, y + delta[1]))
+                    next_state = (next_x, next_y)
+                    curiosity_value = self.curiosity[x, y, action.value]
+                    curiosity_map[(state, next_state)] = curiosity_value
+        return curiosity_map
+        
