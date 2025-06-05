@@ -25,6 +25,7 @@ class BasicMaze:
     A simple grid-based maze environment for agent navigation and reinforcement learning.
     The agent moves within a fixed-size maze with walls, empty cells, and a goal.
     """
+    maze_ID: int = 0
 
     actions: Dict[Action, Tuple[int, int]] = {
         Action.UP: (-1, 0),
@@ -44,7 +45,8 @@ class BasicMaze:
         maze: npt.NDArray[np.int_],
         start_cell: Tuple[int, int] = (0, 0),
         goal_cell: Optional[Tuple[int, int]] = None,
-        max_steps: int = 10000
+        max_steps: int = 200,
+        random_seed: int = 42
     ) -> None:
         """
         Initialize the maze environment.
@@ -70,6 +72,8 @@ class BasicMaze:
         )
         self.reset(self.start_cell)
 
+        self.random_seed: int = random_seed
+
     def reset(self, start_cell: Tuple[int, int]) -> Tuple[int, int]:
         """
         Reset the maze to its initial state and place the agent.
@@ -87,6 +91,8 @@ class BasicMaze:
         self.maze[row][col] = CellType.AGENT
         self.total_reward_environment: float = 0.0
         self.visited: Set[Tuple[int, int]] = {start_cell}
+
+        # TODO: Return random start cell from list of start locations
         return self.agent_position
 
     def get_shape(self) -> Tuple[int, int]:
@@ -216,3 +222,14 @@ class BasicMaze:
         if not valid_goal_neighbor_exists:
             raise ValueError("Goal cell must have at least one accessible neighboring cell.")
 
+
+    def load_maze_from_file(self, ID: int, file_path: str):
+        """
+        Load a maze from a file and set it as the current maze.
+        Args:
+            ID: Unique identifier for the maze.
+            file_path: Path to the file containing the maze data.
+        """
+        pass
+        
+        
