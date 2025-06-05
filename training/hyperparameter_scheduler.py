@@ -84,6 +84,15 @@ class HyperparameterScheduler:
                 "noise_mode": self.noise_mode
             }
 
+        elif self.agent_type == AgentType.SR_DYNA_AGENT:
+            self.hyperparameter_ranges: dict = {
+                "gamma": (0.9, 0.99),
+                "epsilon": (0.1, 0.5),
+                "alpha_w": (0.01, 0.1),
+                "alpha_sr": (0.01, 0.1),
+                "k": (5, 50)
+            }
+
         else:
             raise ValueError(f"Unsupported agent type: {self.agent_type}")
     
@@ -143,6 +152,15 @@ class HyperparameterScheduler:
                 "k_pn": trial.suggest_float("k_pn", *self.hyperparameter_ranges["k_pn"]) if self.noise_mode in [NoiseMode.PERCEPTUAL, NoiseMode.BOTH] else 0.0,
                 "sigma_nn": trial.suggest_float("sigma_nn", *self.hyperparameter_ranges["sigma_nn"]) if self.noise_mode in [NoiseMode.NEURAL, NoiseMode.BOTH] else 0.0,
                 "noise_mode": self.noise_mode
+            }
+
+        elif self.agent_type == AgentType.SR_DYNA_AGENT:
+            hyperparameters = {
+                "gamma": trial.suggest_float("gamma", *self.hyperparameter_ranges["gamma"]),
+                "epsilon": trial.suggest_float("epsilon", *self.hyperparameter_ranges["epsilon"]),
+                "alpha_w": trial.suggest_float("alpha_w", *self.hyperparameter_ranges["alpha_w"]),
+                "alpha_sr": trial.suggest_float("alpha_sr", *self.hyperparameter_ranges["alpha_sr"]),
+                "k": trial.suggest_int("k", self.hyperparameter_ranges["k"][0], self.hyperparameter_ranges["k"][1])
             }
 
         # Run the experiment with the current hyperparameters

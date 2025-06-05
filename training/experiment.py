@@ -88,6 +88,15 @@ class Experiment:
                 action_space=env.actions,
                 hyperparameters=self.hyperparameters
             )
+        elif self.agent_type == AgentType.SR_DYNA_AGENT:
+            from agents.sr_dyna import SRDynaAgent
+            print("Using SR-Dyna agent")
+            agent = SRDynaAgent(
+                maze_shape=env.get_shape(),
+                action_space=env.actions,
+                hyperparameters=self.hyperparameters
+            )
+
         else:
             raise ValueError("Unsupported agent type specified.")
 
