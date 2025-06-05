@@ -49,7 +49,7 @@ def train_agent(
     """
     env:BasicMaze = maze_scheduler.maze
     episode_rewards: List[float] = []
-    uncertainties: List[float] = []
+    uncertainties: List[float] = [] if isinstance(agent, BayesianQLearningAgent) else list(np.zeros(episodes))
     curiosity = [] if isinstance(agent, CuriousAgent) else list(np.zeros(episodes))
     success_count = 0
     trajectory_history: dict[int, List[Tuple[Tuple[int, int],Tuple[int, int]]]] = {}
