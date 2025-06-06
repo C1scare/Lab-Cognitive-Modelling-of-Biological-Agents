@@ -26,7 +26,7 @@ def optimize_run(hyperparameterScheduler: HyperparameterScheduler):
     if hyperparameterScheduler.agent_type == AgentType.CURIOUS_AGENT:
         hyperparameters.usefulness_weight = 1.0 - hyperparameters.surprise_weight - hyperparameters.novelty_weight - hyperparameters.uncertainty_weight
     experiment = Experiment(
-        experiment_name=f"{hyperparameterScheduler.agent_type.value.replace(" ", "_")}_{hyperparameterScheduler.optimization_type.value}_{timestamp}",
+        experiment_name=f"{hyperparameterScheduler.agent_type.value.replace(' ', '_')}_{hyperparameterScheduler.optimization_type.value}_{timestamp}",
         agent_type=hyperparameterScheduler.agent_type,
         hyperparameters=hyperparameters,
         save_results=True
