@@ -92,7 +92,6 @@ class BasicMaze:
         self.total_reward_environment: float = 0.0
         self.visited: Set[Tuple[int, int]] = {start_cell}
 
-        # TODO: Return random start cell from list of start locations
         return self.agent_position
 
     def get_shape(self) -> Tuple[int, int]:
@@ -187,11 +186,14 @@ class BasicMaze:
             ValueError: If start or goal are invalid positions.
         """
         self.empty_cells: list[Tuple[int, int]] = [
-            (r, c)
+            (int(r), int(c))
             for r in range(nrows)
             for c in range(ncols)
             if self.maze[r][c] == CellType.EMPTY
         ]
+        self.start_cell = tuple(map(int, self.start_cell))
+        self.goal_cell = tuple(map(int, self.goal_cell))
+
         if self.goal_cell in self.empty_cells:
             self.empty_cells.remove(self.goal_cell)
 

@@ -60,7 +60,7 @@ def train_agent(
 
 
     for episode in range(episodes):
-        state = env.reset(env.start_cell)
+        state = env.reset(maze_scheduler.next_start_cell())
         maze_history[episode] = (env, env.start_cell)
         total_reward = 0
         if episode not in trajectory_history:
@@ -106,7 +106,7 @@ def train_agent(
         if episode % 50 == 0:
             print(f"Episode {episode}, Total Reward: {total_reward:.2f}, Status: {status.name}")
         
-        if episode % maze_scheduler.trials == 0 and episode > 0:
+        if episode % maze_scheduler.trials_maze == 0 and episode > 0:
             maze_scheduler.next_maze()
             env = maze_scheduler.maze
 

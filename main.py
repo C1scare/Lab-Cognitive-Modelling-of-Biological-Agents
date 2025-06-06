@@ -38,7 +38,7 @@ if __name__ == "__main__":
     # Initialize the experiment
     scheduler = HyperparameterScheduler(
         optimization_type=HyperparamOptType.OPTUNA,
-        agent_type=AgentType.SR_DYNA_AGENT,
+        agent_type=AgentType.Q_LEARNING,
         noise_mode=NoiseMode.NONE,
         opt_score_metric=ScoreMetric.MAX_REWARD,
         n_trials=10

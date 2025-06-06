@@ -26,7 +26,7 @@ class Experiment:
                      sigma_sq_init=2.0,
                      obs_noise_variance=0.1
                  ),
-                 MazeScheduler: MazeScheduler = MazeScheduler(trials=10),
+                 MazeScheduler: MazeScheduler = MazeScheduler(trials_maze=10),
                  save_results: bool = False
                  ):
         """
