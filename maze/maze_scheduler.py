@@ -5,8 +5,11 @@ import numpy as np
 
 class MazeScheduler:
     """
-    Schedules mazes and start positions for agent training/testing.
-    Cycles through a range of mazes and, for each maze, cycles through possible start positions.
+    Handles scheduling of mazes and start positions for agent training and testing.
+
+    - Cycles through a range of mazes (from `first` to `last`).
+    - For each maze, cycles through all possible start positions in random order.
+    - Provides methods to get the next start cell or load the next maze.
     """
 
     def __init__(
@@ -30,9 +33,8 @@ class MazeScheduler:
 
     def next_start_cell(self) -> Tuple[int, int]:
         """
-        Resets the current maze.
-        After `trials_start` resets, cycles to the next start position.
-        Returns the agent's new position.
+        Advances to the next start position if needed and returns it.
+        Cycles after `trials_start` resets.
         """
         self.reset_count += 1
 
@@ -53,7 +55,7 @@ class MazeScheduler:
 
     def _load_maze(self, maze_id: int) -> BasicMaze:
         """
-        Loads a maze and its start positions, shuffling the start positions.
+        Loads a maze by ID and shuffles its start positions.
         """
         if maze_id < 1 or maze_id > 27:
             raise ValueError("Maze ID must be between 1 and 27.")
