@@ -7,6 +7,7 @@ from training.train_script import ExperimentResult
 from training.experiment import Experiment
 import optuna
 from maze.maze_scheduler import MazeScheduler
+import retry
 
 
 class HyperparameterScheduler:
@@ -97,6 +98,7 @@ class HyperparameterScheduler:
         else:
             raise ValueError(f"Unsupported agent type: {self.agent_type}")
     
+    @retry.retry(tries=3,)
     def _objective(self, trial: optuna.Trial) -> float:
         """
         Objective function for hyperparameter optimization.

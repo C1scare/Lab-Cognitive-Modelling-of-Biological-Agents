@@ -5,3 +5,4 @@ optuna
 plotly
 dash
 dash_boostrap_components
+retry

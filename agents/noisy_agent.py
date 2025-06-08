@@ -48,8 +48,8 @@ class NoisyAgent(BayesianQLearningAgent):
             action_space=action_space,
             hyperparameters=hyperparameters
         )
-        if (hyperparameters.k_pn is None or
-            hyperparameters.sigma_nn is None or
+        if ((hyperparameters.k_pn is None and hyperparameters.noise_mode in [NoiseMode.PERCEPTUAL, NoiseMode.BOTH]) or
+            (hyperparameters.sigma_nn is None and hyperparameters.noise_mode in [NoiseMode.NEURAL, NoiseMode.BOTH]) or
             hyperparameters.noise_mode is None):
             raise ValueError("Hyperparameters must be provided with valid values.")
 
