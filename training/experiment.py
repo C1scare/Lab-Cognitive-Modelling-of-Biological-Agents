@@ -26,7 +26,7 @@ class Experiment:
                      sigma_sq_init=2.0,
                      obs_noise_variance=0.1
                  ),
-                 MazeScheduler: MazeScheduler = MazeScheduler(trials_maze=10),
+                 maze_scheduler: MazeScheduler = MazeScheduler(trials_maze=10),
                  save_results: bool = False
                  ):
         """
@@ -42,7 +42,7 @@ class Experiment:
             os.makedirs(storage_path)
         self.agent_type = agent_type
         self.hyperparameters = hyperparameters
-        self.maze_scheduler = MazeScheduler
+        self.maze_scheduler = maze_scheduler
         self.save_results = save_results
 
     def run_experiment(self) -> ExperimentResult:

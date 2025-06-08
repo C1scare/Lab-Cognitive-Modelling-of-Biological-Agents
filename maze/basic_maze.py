@@ -25,7 +25,6 @@ class BasicMaze:
     A simple grid-based maze environment for agent navigation and reinforcement learning.
     The agent moves within a fixed-size maze with walls, empty cells, and a goal.
     """
-    maze_ID: int = 0
 
     actions: Dict[Action, Tuple[int, int]] = {
         Action.UP: (-1, 0),
@@ -46,7 +45,8 @@ class BasicMaze:
         start_cell: Tuple[int, int] = (0, 0),
         goal_cell: Optional[Tuple[int, int]] = None,
         max_steps: int = 200,
-        random_seed: int = 42
+        random_seed: int = 42,
+        maze_ID: Optional[int] = None
     ) -> None:
         """
         Initialize the maze environment.
@@ -73,6 +73,7 @@ class BasicMaze:
         self.reset(self.start_cell)
 
         self.random_seed: int = random_seed
+        self.maze_ID: Optional[int] = maze_ID
 
     def reset(self, start_cell: Tuple[int, int]) -> Tuple[int, int]:
         """

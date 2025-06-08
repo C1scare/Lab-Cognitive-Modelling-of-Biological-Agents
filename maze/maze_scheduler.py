@@ -51,7 +51,7 @@ class MazeScheduler:
         self.current_maze_id += 1
         if self.current_maze_id > self.last:
             self.current_maze_id = 1
-        return self._load_maze(self.current_maze_id)
+        self.maze = self._load_maze(self.current_maze_id)
 
     def _load_maze(self, maze_id: int) -> BasicMaze:
         """
@@ -70,4 +70,5 @@ class MazeScheduler:
         self.start_index = 0
         start_cell: Tuple[int, int] = self.start_permutation[self.start_index]
         goal_cell = maze_info['goal_cell']
-        return BasicMaze(maze=maze_array, start_cell=start_cell, goal_cell=goal_cell)
+
+        return BasicMaze(maze=maze_array, start_cell=start_cell, goal_cell=goal_cell, maze_ID=maze_id)

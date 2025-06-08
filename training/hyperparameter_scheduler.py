@@ -6,6 +6,7 @@ from enums.noise_mode import NoiseMode
 from training.train_script import ExperimentResult
 from training.experiment import Experiment
 import optuna
+from maze.maze_scheduler import MazeScheduler
 
 
 class HyperparameterScheduler:
@@ -164,7 +165,8 @@ class HyperparameterScheduler:
             }
 
         # Run the experiment with the current hyperparameters
-        experiment = Experiment(agent_type=self.agent_type, hyperparameters=Hyperparameter(**hyperparameters))
+        maze_scheduler = MazeScheduler(trials_maze=10)
+        experiment = Experiment(agent_type=self.agent_type, hyperparameters=Hyperparameter(**hyperparameters), maze_scheduler=maze_scheduler, save_results=False)
         result:ExperimentResult = experiment.run_experiment()
 
         # Return the score metric based on the optimization type
