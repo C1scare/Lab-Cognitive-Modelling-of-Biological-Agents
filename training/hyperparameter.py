@@ -30,5 +30,5 @@ class Hyperparameter(BaseModel):
     alpha_sr: Optional[float] = Field(default=None, description="Learning rate for the successor representation in SR-Dyna agent.")
     k: Optional[int] = Field(default=None, description="Number of transitions to replay from the buffer in each learning step for SR-Dyna agent.")
 
-    episodes: Optional[int] = Field(default=500, description="Number of episodes for training the agent.")
+    episodes: Optional[int] = Field(default=1500, description="Number of episodes for training the agent.")
     random_seed: Optional[int] = Field(default=42, description="Random seed for reproducibility.")

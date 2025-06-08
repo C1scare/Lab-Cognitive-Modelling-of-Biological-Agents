@@ -86,12 +86,13 @@ class BasicMaze:
             The initial agent position.
         """
         self.steps: int = 0
-        self.agent_position: Tuple[int, int] = start_cell
+        self.start_cell = start_cell
+        self.agent_position: Tuple[int, int] = self.start_cell
         self.maze = np.copy(self._original_maze)
-        row, col = start_cell
+        row, col = self.start_cell
         self.maze[row][col] = CellType.AGENT
         self.total_reward_environment: float = 0.0
-        self.visited: Set[Tuple[int, int]] = {start_cell}
+        self.visited: Set[Tuple[int, int]] = {self.start_cell}
 
         return self.agent_position
 

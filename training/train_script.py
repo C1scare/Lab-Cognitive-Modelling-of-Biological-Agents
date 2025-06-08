@@ -17,10 +17,10 @@ class ExperimentResult(BaseModel):
     learning_speed: float = Field(alias="learning_speed")
     best_path_length: int = Field(alias="best_path_length")
     trajectory_history: dict[int, List[Tuple[Tuple[int, int], Tuple[int, int]]]] = Field(alias="trajectory_history", default_factory=dict)
-    maze_history: dict[int, Tuple[BasicMaze, Tuple[int,int]]] = Field(alias="maze_history", default_factory=list)
-    curiosity_history: dict[int, dict[Tuple[Tuple[int, int], Tuple[int, int]], float]] = Field(alias="curiosity_history", default_factory=dict)
-    uncertainty_history: dict[int, dict[Tuple[Tuple[int, int], Tuple[int, int]], float]] = Field(alias="uncertainty_history", default_factory=dict)
-    q_mean_history: dict[int, dict[Tuple[Tuple[int, int], Tuple[int, int]], float]] = Field(alias="q_mean_history", default_factory=dict)
+    maze_history: dict[int, Tuple[BasicMaze, Tuple[int,int], Tuple[int,int]]] = Field(alias="maze_history", default_factory=list)
+    curiosity_history: dict[int, np.ndarray] = Field(alias="curiosity_history", default_factory=dict)
+    uncertainty_history: dict[int, np.ndarray] = Field(alias="uncertainty_history", default_factory=dict)
+    q_mean_history: dict[int, np.ndarray] = Field(alias="q_mean_history", default_factory=dict)
     uncertainties:List[float] = Field(alias="uncertainties", default_factory=list)
     curiosity: list[float] = Field(alias="curiosity", default_factory=list)
 
@@ -61,7 +61,7 @@ def train_agent(
 
     for episode in range(episodes):
         state = env.reset(maze_scheduler.next_start_cell())
-        maze_history[episode] = (env, env.start_cell)
+        maze_history[episode] = (env, env.start_cell, env.goal_cell)
         total_reward = 0
         if episode not in trajectory_history:
             trajectory_history[episode] = []
@@ -77,13 +77,13 @@ def train_agent(
 
             trajectory_history[episode].append((state, next_state))
             if isinstance(agent, CuriousAgent):
-                curiosity_map = agent.transform_curiosity_map(env)
+                curiosity_map = np.mean(agent.curiosity[:,:,:], axis=2)
                 curiosity_history[episode] = curiosity_map
             
             if isinstance(agent, BayesianQLearningAgent):
-                uncertainty_map = agent.transform_q_dist_map(env, variance=True)
+                uncertainty_map = np.mean(agent.q_dist_table[:, :, :, 1], axis=2)
                 uncertainty_history[episode] = uncertainty_map
-                q_mean_map = agent.transform_q_dist_map(env)
+                q_mean_map = np.mean(agent.q_dist_table[:, :, :, 0], axis=2)
                 q_mean_history[episode] = q_mean_map
 
             state: Tuple[int, int] = next_state
