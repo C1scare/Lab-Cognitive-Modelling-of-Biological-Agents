@@ -6,12 +6,31 @@ from training.hyperparameter_scheduler import HyperparameterScheduler
 from enums.hyperparam_opt_type import HyperparamOptType
 from enums.score_metric import ScoreMetric
 import datetime
+import pickle
 
 
 def single_experiment_run(experiment: Experiment):
     experiment_result = experiment.run_experiment()
-    app = experiment.create_dashboard(experiment_result)
-    return app
+    #app = experiment.create_dashboard(experiment_result)
+    #return app
+    return None
+
+def load_experiment(experiment_name: str, storage_path: str = "experiments/"):
+    """
+    Load an experiment from a file.
+    
+    Args:
+        experiment_name: Name of the experiment to load.
+        storage_path: Path where the experiment results are stored.
+    
+    Returns:
+        Experiment object loaded from the file.
+    """
+    file_path = f"{storage_path}{experiment_name}.pkl"
+    with open(file_path, "rb") as f:
+        experiment:Experiment = pickle.load(f)
+    app = experiment.create_dashboard(experiment.scores)
+    app.run(debug=False, port=8050)
 
 
 def optimize_run(hyperparameterScheduler: HyperparameterScheduler):
@@ -38,12 +57,59 @@ if __name__ == "__main__":
     # Initialize the experiment
     scheduler = HyperparameterScheduler(
         optimization_type=HyperparamOptType.OPTUNA,
-        agent_type=AgentType.Q_LEARNING,
+        agent_type=AgentType.BAYESIAN_Q_LEARNING,
         noise_mode=NoiseMode.NONE,
-        opt_score_metric=ScoreMetric.MAX_REWARD,
-        n_trials=10
+        opt_score_metric=ScoreMetric.SUCCESS_RATE,
+        n_trials=150
     )
     app = optimize_run(scheduler)
-    app.run(debug=False, port=8050)
+
+    scheduler = HyperparameterScheduler(
+        optimization_type=HyperparamOptType.OPTUNA,
+        agent_type=AgentType.NOISY_AGENT,
+        noise_mode=NoiseMode.PERCEPTUAL,
+        opt_score_metric=ScoreMetric.SUCCESS_RATE,
+        n_trials=150
+    )
+    app = optimize_run(scheduler)
+
+    scheduler = HyperparameterScheduler(
+        optimization_type=HyperparamOptType.OPTUNA,
+        agent_type=AgentType.NOISY_AGENT,
+        noise_mode=NoiseMode.NEURAL,
+        opt_score_metric=ScoreMetric.SUCCESS_RATE,
+        n_trials=150
+    )
+    app = optimize_run(scheduler)
+
+    scheduler = HyperparameterScheduler(
+        optimization_type=HyperparamOptType.OPTUNA,
+        agent_type=AgentType.NOISY_AGENT,
+        noise_mode=NoiseMode.BOTH,
+        opt_score_metric=ScoreMetric.SUCCESS_RATE,
+        n_trials=150
+    )
+    app = optimize_run(scheduler)
+
+    scheduler = HyperparameterScheduler(
+        optimization_type=HyperparamOptType.OPTUNA,
+        agent_type=AgentType.CURIOUS_AGENT,
+        noise_mode=NoiseMode.NONE,
+        opt_score_metric=ScoreMetric.SUCCESS_RATE,
+        n_trials=150
+    )
+    app = optimize_run(scheduler)
+
+    scheduler = HyperparameterScheduler(
+        optimization_type=HyperparamOptType.OPTUNA,
+        agent_type=AgentType.SR_DYNA_AGENT,
+        noise_mode=NoiseMode.NONE,
+        opt_score_metric=ScoreMetric.SUCCESS_RATE,
+        n_trials=150
+    )
+    app = optimize_run(scheduler)
+    #app.run(debug=False, port=8050)
+    
+    #load_experiment("Q-learning_agent_optuna_20250625_234305_instance")
 
     

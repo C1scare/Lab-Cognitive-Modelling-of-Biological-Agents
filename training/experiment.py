@@ -100,16 +100,15 @@ class Experiment:
         else:
             raise ValueError("Unsupported agent type specified.")
 
-        scores:ExperimentResult = train_agent(self.maze_scheduler, agent, episodes=self.hyperparameters.episodes)
+        self.scores:ExperimentResult = train_agent(self.maze_scheduler, agent, episodes=self.hyperparameters.episodes)
 
         if self.save_results:
             with open(os.path.join(self.storage_path, f"{self.experiment_name}_instance.pkl"), "wb") as f:
                 pickle.dump(self, f)
             
-        return scores
+        return self.scores
 
 
     def create_dashboard(self, experiment_result: ExperimentResult):
         from maze.maze_visualizer import MazeVisualizer
         return MazeVisualizer().create_dashboard(experiment_result, self)
-    

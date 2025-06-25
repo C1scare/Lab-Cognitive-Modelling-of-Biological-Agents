@@ -90,6 +90,20 @@ class BayesianQLearningAgent(BaseAgent):
             for action in range(len(self.action_space))
         ])
         return Action(np.argmax(sampled_q_values))
+    
+    def exploit_action(self, state: Tuple[int, int]) -> Action:
+        """
+        Selects the action with the highest mean Q-value for the given state.
+
+        Args:
+            state (Tuple[int, int]): The current state of the agent.
+
+        Returns:
+            Action: The action with the highest mean Q-value.
+        """
+        row, col = state
+        action_id = np.argmax(self.q_dist_table[row, col, :, 0])
+        return Action(action_id)
 
     def choose_action(self, state: Tuple[int, int]) -> Action:
         """
@@ -102,8 +116,10 @@ class BayesianQLearningAgent(BaseAgent):
             An Action selected either randomly or greedily.
         """
         if random.random() < self.epsilon:
-            return random.choice(self.action_space)
-        return self.thompson_sample_action(state)
+            random_step = random.choice(self.action_space)
+            return random_step
+        # With 50% probability, use Thompson Sampling, otherwise exploit the best action
+        return self.thompson_sample_action(state) if random.random() < 0.5 else self.exploit_action(state)
 
     def calculate_bellman_target(self,
                               state: Tuple[int, int],
