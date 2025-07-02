@@ -36,7 +36,7 @@ class BasicMaze:
     # Reward configuration
     reward_goal: float = 10.0
     penalty_move: float = -0.05
-    penalty_already_visited: float = -0.1
+    penalty_already_visited: float = -0.05
     penalty_impossible_move: float = -0.5
 
     def __init__(
