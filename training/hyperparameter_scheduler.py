@@ -167,7 +167,7 @@ class HyperparameterScheduler:
             }
 
         # Run the experiment with the current hyperparameters
-        maze_scheduler = MazeScheduler(trials_maze=10)
+        maze_scheduler = MazeScheduler(first=26, last= 27, trials_maze=200)
         experiment = Experiment(agent_type=self.agent_type, hyperparameters=Hyperparameter(**hyperparameters), maze_scheduler=maze_scheduler, save_results=False)
         result:ExperimentResult = experiment.run_experiment()
 
