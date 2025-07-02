@@ -50,7 +50,7 @@ class MazeScheduler:
         """
         self.current_maze_id += 1
         if self.current_maze_id > self.last:
-            self.current_maze_id = 1
+            self.current_maze_id = self.first
         self.maze = self._load_maze(self.current_maze_id)
 
     def _load_maze(self, maze_id: int) -> BasicMaze:
