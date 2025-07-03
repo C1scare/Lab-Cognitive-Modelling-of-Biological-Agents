@@ -1,0 +1,14 @@
+name: lab_env
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.12
+  - numpy
+  - matplotlib
+  - pydantic
+  - optuna
+  - plotly
+  - dash
+  - dash-bootstrap-components
+  - retry
