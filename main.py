@@ -7,6 +7,7 @@ from enums.hyperparam_opt_type import HyperparamOptType
 from enums.score_metric import ScoreMetric
 import datetime
 import pickle
+import asyncio
 
 
 def single_experiment_run(experiment: Experiment):
@@ -15,7 +16,7 @@ def single_experiment_run(experiment: Experiment):
     #return app
     return None
 
-def load_experiment(experiment_name: str, storage_path: str = "experiments/"):
+async def load_experiment(experiment_name: str, storage_path: str = "experiments/", port:int=8050):
     """
     Load an experiment from a file.
     
@@ -30,7 +31,7 @@ def load_experiment(experiment_name: str, storage_path: str = "experiments/"):
     with open(file_path, "rb") as f:
         experiment:Experiment = pickle.load(f)
     app = experiment.create_dashboard(experiment.scores)
-    app.run(debug=False, port=8050)
+    app.run(debug=False, port=port)
 
 
 def optimize_run(hyperparameterScheduler: HyperparameterScheduler):
@@ -52,6 +53,34 @@ def optimize_run(hyperparameterScheduler: HyperparameterScheduler):
     )
     return single_experiment_run(experiment)
 
+async def main():
+    """
+    The main coroutine that schedules and runs all tasks concurrently.
+    """
+    # A list of tuples, each containing the arguments for one call
+    experiments_to_run = [
+        ("Bayesian_Q-learning_agent_optuna_20250703_021348_instance", 8050),
+        ("Curious_Bayesian_Q-learning_agent_optuna_20250703_023646_instance", 8051),
+        ("Noisy_Bayesian_Q-learning_agent_optuna_20250703_021834_instance", 8052),
+        ("Noisy_Bayesian_Q-learning_agent_optuna_20250703_022440_instance", 8053),
+        ("Noisy_Bayesian_Q-learning_agent_optuna_20250703_022959_instance", 8054),
+        ("Q-learning_agent_optuna_20250703_093138_instance", 8055),
+        ("SR-Dyna_agent_optuna_20250703_024259_instance", 8056),
+    ]
+
+    # Create a list of tasks that can be run concurrently.
+    # `asyncio.create_task` schedules the coroutine to run on the event loop.
+    tasks = [
+        asyncio.create_task(load_experiment(name, port)) 
+        for name, port in experiments_to_run
+    ]
+    
+    # `asyncio.gather` waits for all tasks in the list to complete.
+    #results = await asyncio.gather(*tasks)
+
+    #for res in results:
+    #    print(f"- {res}")
+
 
 if __name__ == "__main__":
     # Initialize the experiment
@@ -62,7 +91,7 @@ if __name__ == "__main__":
         opt_score_metric=ScoreMetric.SUCCESS_RATE,
         n_trials=150
     )
-    app = optimize_run(scheduler)
+    #app = optimize_run(scheduler)
 
     scheduler = HyperparameterScheduler(
         optimization_type=HyperparamOptType.OPTUNA,
@@ -71,7 +100,7 @@ if __name__ == "__main__":
         opt_score_metric=ScoreMetric.SUCCESS_RATE,
         n_trials=150
     )
-    app = optimize_run(scheduler)
+    #app = optimize_run(scheduler)
 
     scheduler = HyperparameterScheduler(
         optimization_type=HyperparamOptType.OPTUNA,
@@ -80,7 +109,7 @@ if __name__ == "__main__":
         opt_score_metric=ScoreMetric.SUCCESS_RATE,
         n_trials=150
     )
-    app = optimize_run(scheduler)
+    #app = optimize_run(scheduler)
 
     scheduler = HyperparameterScheduler(
         optimization_type=HyperparamOptType.OPTUNA,
@@ -89,7 +118,7 @@ if __name__ == "__main__":
         opt_score_metric=ScoreMetric.SUCCESS_RATE,
         n_trials=150
     )
-    app = optimize_run(scheduler)
+    #app = optimize_run(scheduler)
 
     scheduler = HyperparameterScheduler(
         optimization_type=HyperparamOptType.OPTUNA,
@@ -98,7 +127,7 @@ if __name__ == "__main__":
         opt_score_metric=ScoreMetric.SUCCESS_RATE,
         n_trials=150
     )
-    app = optimize_run(scheduler)
+    #app = optimize_run(scheduler)
 
     scheduler = HyperparameterScheduler(
         optimization_type=HyperparamOptType.OPTUNA,
@@ -107,9 +136,9 @@ if __name__ == "__main__":
         opt_score_metric=ScoreMetric.SUCCESS_RATE,
         n_trials=150
     )
-    app = optimize_run(scheduler)
+    #app = optimize_run(scheduler)
     #app.run(debug=False, port=8050)
     
-    #load_experiment("Q-learning_agent_optuna_20250625_234305_instance")
+    asyncio.run(main())
 
     

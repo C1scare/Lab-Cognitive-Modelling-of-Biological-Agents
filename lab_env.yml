@@ -5,10 +5,12 @@ channels:
 dependencies:
   - python=3.12
   - numpy
-  - matplotlib
   - pydantic
-  - optuna
   - plotly
-  - dash
-  - dash-bootstrap-components
-  - retry
+  - matplotlib
+  - pip
+  - pip:
+      - dash-bootstrap-components
+      - dash
+      - retry
+      - optuna

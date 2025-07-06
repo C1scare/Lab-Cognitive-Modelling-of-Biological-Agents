@@ -1,8 +1,8 @@
 numpy
 matplotlib
 pydantic
-optuna
+optuna #pip
 plotly
 dash
-dash_boostrap_components
-retry
+dash-bootstrap-components #pip
+retry #pip
