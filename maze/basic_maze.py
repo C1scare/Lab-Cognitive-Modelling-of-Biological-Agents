@@ -2,7 +2,9 @@ from enum import Enum, IntEnum
 from typing import Tuple, Optional, Dict, Set, List
 import numpy as np
 import numpy.typing as npt
+import matplotlib.pyplot as plt
 from maze.maze_renderer import MazeRenderer
+from maze.maze_definitions import mazes
 
 class CellType(IntEnum):
     EMPTY = 0
@@ -97,9 +99,10 @@ class BasicMaze:
         return self.agent_position
 
     def get_shape(self) -> Tuple[int, int]:
-        """Return the shape of the maze."""
-        return self.maze.shape
-
+        """Return the shape of the maze as a tuple (rows, columns)."""
+        maze_shape: Tuple[int, int] = (int(self.maze.shape[0]), int(self.maze.shape[1]))
+        return maze_shape
+    
     def game_status(self) -> GameStatus:
         """
         Check the current game status.
@@ -193,8 +196,10 @@ class BasicMaze:
             for c in range(ncols)
             if self.maze[r][c] == CellType.EMPTY
         ]
-        self.start_cell = tuple(map(int, self.start_cell))
-        self.goal_cell = tuple(map(int, self.goal_cell))
+        sr, sc = map(int, self.start_cell)
+        self.start_cell = (sr, sc)
+        gr, gc = map(int, self.goal_cell)
+        self.goal_cell = (gr, gc)
 
         if self.goal_cell in self.empty_cells:
             self.empty_cells.remove(self.goal_cell)
@@ -208,7 +213,6 @@ class BasicMaze:
         if self.start_cell == self.goal_cell:
             raise ValueError("The agent cannot start on the goal cell.")
         
-        sr, sc = self.start_cell
         start_neighbors: List[Tuple[int, int]] = [(sr - 1, sc), (sr + 1, sc), (sr, sc - 1), (sr, sc + 1)]
         valid_start_neighbor_exists: bool = any(
             0 <= r < nrows and 0 <= c < ncols and self.maze[r][c] != CellType.WALL
@@ -217,7 +221,6 @@ class BasicMaze:
         if not valid_start_neighbor_exists:
             raise ValueError("Start cell must have at least one accessible neighboring cell.")
         
-        gr, gc = self.goal_cell
         goal_neighbors: List[Tuple[int, int]] = [(gr - 1, gc), (gr + 1, gc), (gr, gc - 1), (gr, gc + 1)]
         valid_goal_neighbor_exists: bool = any(
             0 <= r < nrows and 0 <= c < ncols and self.maze[r][c] != CellType.WALL
@@ -226,14 +229,29 @@ class BasicMaze:
         if not valid_goal_neighbor_exists:
             raise ValueError("Goal cell must have at least one accessible neighboring cell.")
 
-
-    def load_maze_from_file(self, ID: int, file_path: str):
+    @staticmethod
+    def render_maze_figure(maze_ID: int, start_cell_id:int = 0) -> None:
         """
-        Load a maze from a file and set it as the current maze.
+        Render a maze from maze_definitions.py.
         Args:
-            ID: Unique identifier for the maze.
-            file_path: Path to the file containing the maze data.
+            maze_ID: Unique identifier for the maze.
+            start_cell_id: Index of the start cell to use from the maze's start cells.
         """
-        pass
+       
+        if maze_ID < 1 or maze_ID > 27:
+            raise ValueError("Maze ID must be between 1 and 27.")
+        if start_cell_id < 0 or start_cell_id >= len(mazes[f"maze_{maze_ID:02d}"]['start_cells']):
+            raise ValueError(f"Invalid start cell ID {start_cell_id} for maze {maze_ID}.")
+        maze_id = maze_ID
+        maze_name = f"maze_{maze_id:02d}"
+        maze_info = mazes[maze_name]
+        maze_array = maze_info['maze']
+        start_cells = maze_info['start_cells']
+        start_cell = start_cells[start_cell_id]
+        goal_cell = maze_info['goal_cell']
+
+        maze = BasicMaze(maze=maze_array, start_cell=start_cell, goal_cell=goal_cell, maze_ID=maze_id)
+        maze.render()
+        plt.show()
         
         
