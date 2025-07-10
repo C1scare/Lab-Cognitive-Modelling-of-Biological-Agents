@@ -9,7 +9,7 @@ This project implements a modular maze environment for reinforcement learning, s
 
 
 ## Getting Started
-(optional) To install the environment in a custom directory, add a prefix with the desired file path to the end of the .yml file.
+(optional, not necessary) To install the environment in a custom directory, add a prefix with the desired file path to the end of the .yml file.
 
 ```yml
 prefix: C:\Users\user\anaconda3

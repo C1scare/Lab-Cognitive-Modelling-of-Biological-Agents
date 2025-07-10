@@ -1,14 +1,19 @@
 name: lab_env
 channels:
+  - nvidia
   - conda-forge
   - defaults
 dependencies:
-  - python=3.12
-  - numpy
-  - matplotlib
-  - pydantic
-  - optuna
-  - plotly
-  - dash
-  - dash-bootstrap-components
-  - retry
+  - numpy=1.26.4
+  - pandas=2.2.2
+  - matplotlib=3.8.4
+  - seaborn=0.13.2
+  - scikit-learn=1.4.2
+  - pydantic=2.10.5
+  - optuna=4.3.0
+  - plotly=5.22.0
+  - pip
+  - pip:
+      - dash==3.0.4
+      - dash-bootstrap-components==2.0.3
+      - retry==0.9.2
