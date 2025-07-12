@@ -1,6 +1,6 @@
 from maze.basic_maze import BasicMaze
 from maze.maze_definitions import mazes
-from typing import Tuple
+from typing import Tuple, List
 import numpy as np
 
 class MazeScheduler:
@@ -44,7 +44,7 @@ class MazeScheduler:
 
         return self.start_permutation[self.start_index]
 
-    def next_maze(self) -> BasicMaze:
+    def next_maze(self) -> None:
         """
         Loads the next maze in the sequence and resets start positions.
         """
@@ -66,7 +66,7 @@ class MazeScheduler:
         # Shuffle start cells and convert to list of tuples
         rng = np.random.RandomState(self.random_seed)
         permuted = rng.permutation(len(start_cells))
-        self.start_permutation = [tuple(map(int, start_cells[i])) for i in permuted]
+        self.start_permutation: List[Tuple[int, int]] = [ (int(start_cells[i][0]), int(start_cells[i][1])) for i in permuted ]
         self.start_index = 0
         start_cell: Tuple[int, int] = self.start_permutation[self.start_index]
         goal_cell = maze_info['goal_cell']

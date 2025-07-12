@@ -158,17 +158,17 @@ class MazeVisualizer:
 
             # Subplot 2: Q-Mean Heatmap
             current_frame_data.append(self._create_heatmap_trace(
-                q_mean_data, maze.shape, q_mean_min, q_mean_max, 'Q-Mean', 'Viridis'
+                q_mean_data, (maze.shape[0], maze.shape[1]), q_mean_min, q_mean_max, 'Q-Mean', 'Viridis'
             ).update(xaxis='x2', yaxis='y2'))
 
             # Subplot 3: Curiosity Heatmap
             current_frame_data.append(self._create_heatmap_trace(
-                curiosity_data, maze.shape, curiosity_min, curiosity_max, 'Curiosity', 'Plasma'
+                curiosity_data, (maze.shape[0], maze.shape[1]), curiosity_min, curiosity_max, 'Curiosity', 'Plasma'
             ).update(xaxis='x3', yaxis='y3'))
 
             # Subplot 4: Uncertainty Heatmap
             current_frame_data.append(self._create_heatmap_trace(
-                uncertainty_data, maze.shape, uncertainty_min, uncertainty_max, 'Uncertainty', 'Cividis'
+                uncertainty_data, (maze.shape[0], maze.shape[1]), uncertainty_min, uncertainty_max, 'Uncertainty', 'Cividis'
             ).update(xaxis='x4', yaxis='y4'))
 
             frames.append(go.Frame(data=current_frame_data, name=str(episode), layout=go.Layout(
@@ -247,17 +247,17 @@ class MazeVisualizer:
 
         # Initial Q-Mean Heatmap
         initial_data.append(self._create_heatmap_trace(
-            initial_q_mean_data, initial_maze.shape, q_mean_min, q_mean_max, 'Q-Mean', 'Viridis'
+            initial_q_mean_data, (initial_maze.shape[0], initial_maze.shape[1]), q_mean_min, q_mean_max, 'Q-Mean', 'Viridis'
         ).update(xaxis='x2', yaxis='y2'))
 
         # Initial Curiosity Heatmap
         initial_data.append(self._create_heatmap_trace(
-            initial_curiosity_data, initial_maze.shape, curiosity_min, curiosity_max, 'Curiosity', 'Plasma'
+            initial_curiosity_data, (initial_maze.shape[0], initial_maze.shape[1]), curiosity_min, curiosity_max, 'Curiosity', 'Plasma'
         ).update(xaxis='x3', yaxis='y3'))
 
         # Initial Uncertainty Heatmap
         initial_data.append(self._create_heatmap_trace(
-            initial_uncertainty_data, initial_maze.shape, uncertainty_min, uncertainty_max, 'Uncertainty', 'Cividis'
+            initial_uncertainty_data, (initial_maze.shape[0], initial_maze.shape[1]), uncertainty_min, uncertainty_max, 'Uncertainty', 'Cividis'
         ).update(xaxis='x4', yaxis='y4'))
 
         fig.add_traces(initial_data)
