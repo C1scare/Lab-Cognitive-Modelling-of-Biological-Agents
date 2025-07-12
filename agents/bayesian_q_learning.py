@@ -189,7 +189,7 @@ class BayesianQLearningAgent(BaseAgent):
 
         # Update the distribution parameters
         self.q_dist_table[row, col, action_id, 0] = new_mu_sa
-        self.q_dist_table[row, col, action_id, 1] = new_sigma_sq_sa
+        self.q_dist_table[row, col, action_id, 1] = tau_sa_prior * self.tau_obs * new_sigma_sq_sa
     
 
     def learn(

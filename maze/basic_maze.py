@@ -35,16 +35,16 @@ class BasicMaze:
 
     # Reward configuration
     reward_goal: float = 10.0
-    penalty_move: float = -0.05
-    penalty_already_visited: float = -0.05
-    penalty_impossible_move: float = -0.5
+    penalty_move: float = -1#-0.05
+    penalty_already_visited: float = -1#-0.05
+    penalty_impossible_move: float = -5
 
     def __init__(
         self, 
         maze: npt.NDArray[np.int_],
         start_cell: Tuple[int, int] = (0, 0),
         goal_cell: Optional[Tuple[int, int]] = None,
-        max_steps: int = 200,
+        max_steps: int = 30,
         random_seed: int = 42,
         maze_ID: Optional[int] = None
     ) -> None:

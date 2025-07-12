@@ -110,5 +110,6 @@ class Experiment:
 
 
     def create_dashboard(self, experiment_result: ExperimentResult):
+        """ Create a dashboard for the experiment results."""
         from maze.maze_visualizer import MazeVisualizer
         return MazeVisualizer().create_dashboard(experiment_result, self)

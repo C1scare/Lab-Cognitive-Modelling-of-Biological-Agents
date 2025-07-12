@@ -59,17 +59,15 @@ class HyperparameterScheduler:
                 "gamma": (0.9, 0.99),
                 "epsilon": (0.1, 0.5),
                 "mu_init": (0.0, 1.0),
-                "sigma_sq_init": (0.1, 2.0),
+                "sigma_sq_init": (0.1, 1.0),
                 "obs_noise_variance": (0.01, 0.5),
                 "curiosity_init": (0.1, 1.0),
-                "alpha_C": (0.01, 0.1),
-                "surprise_weight": (1e-5, 1.0),
-                "novelty_weight": (1e-5, 1.0),
-                "usefulness_weight": (1e-5, 1.0),
-                "uncertainty_weight": (1e-5, 1.0),
-                "beta_T": (0.01, 0.1),
-                "beta_U": (0.01, 0.1),
-                "beta_N": (0.01, 0.1)
+                "alpha_C": (0.5, 0.99),
+                "surprise_weight": (0.01, 1.0),
+                "novelty_weight": (0.01, 1.0),
+                "usefulness_weight": (0.01, 1.0),
+                "uncertainty_weight": (0.01, 1.0),
+                "alpha_tau": (0.01, 1.0)
             }
 
         elif self.agent_type == AgentType.NOISY_AGENT:
@@ -135,14 +133,9 @@ class HyperparameterScheduler:
                 "surprise_weight": trial.suggest_float("surprise_weight", *self.hyperparameter_ranges["surprise_weight"]),
                 "novelty_weight": trial.suggest_float("novelty_weight", *self.hyperparameter_ranges["novelty_weight"]),
                 "uncertainty_weight": trial.suggest_float("uncertainty_weight", *self.hyperparameter_ranges["uncertainty_weight"]),
-                "beta_T": trial.suggest_float("beta_T", *self.hyperparameter_ranges["beta_T"]),
-                "beta_U": trial.suggest_float("beta_U", *self.hyperparameter_ranges["beta_U"]),
-                "beta_N": trial.suggest_float("beta_N", *self.hyperparameter_ranges["beta_N"])
+                "usefulness_weight": trial.suggest_float("usefulness_weight", *self.hyperparameter_ranges["usefulness_weight"]),
+                "alpha_tau": trial.suggest_float("alpha_tau", *self.hyperparameter_ranges["alpha_tau"])
             }
-            usefulness_weight = 1.0 - hyperparameters["surprise_weight"] - hyperparameters["novelty_weight"] - hyperparameters["uncertainty_weight"]
-            if usefulness_weight < self.hyperparameter_ranges["usefulness_weight"][0] or usefulness_weight > self.hyperparameter_ranges["usefulness_weight"][1]:
-                raise optuna.exceptions.TrialPruned("Sum of weights exceeded 1 or resulted in out-of-range usefulness_weight.")
-            hyperparameters["usefulness_weight"] = usefulness_weight
 
 
         elif self.agent_type == AgentType.NOISY_AGENT:
@@ -167,7 +160,7 @@ class HyperparameterScheduler:
             }
 
         # Run the experiment with the current hyperparameters
-        maze_scheduler = MazeScheduler(first=26, last= 27, trials_maze=200)
+        maze_scheduler = MazeScheduler(first=26, last=27, trials_maze=200)
         experiment = Experiment(agent_type=self.agent_type, hyperparameters=Hyperparameter(**hyperparameters), maze_scheduler=maze_scheduler, save_results=False)
         result:ExperimentResult = experiment.run_experiment()
 

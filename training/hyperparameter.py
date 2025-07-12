@@ -22,9 +22,7 @@ class Hyperparameter(BaseModel):
     novelty_weight: Optional[float] = Field(default=None, description="Weight for the novelty component in curiosity-driven exploration.")
     usefulness_weight: Optional[float] = Field(default=None, description="Weight for the usefulness component in curiosity-driven exploration.")
     uncertainty_weight: Optional[float] = Field(default=None, description="Weight for the uncertainty component in curiosity-driven exploration.")
-    beta_T: Optional[float] = Field(default=None, description="Uncertainty scaling factor for the curiosity-driven exploration.")
-    beta_U: Optional[float] = Field(default=None, description="Usefulness scaling factor for the usefulness component in curiosity-driven exploration.")
-    beta_N: Optional[float] = Field(default=None, description="Novelty scaling factor for the novelty component in curiosity-driven exploration.")
+    alpha_tau: Optional[float] = Field(default=None, description="Learning rate for the tau parameter in curiosity-driven exploration.")
 
     alpha_w: Optional[float] = Field(default=None, description="Learning rate for the reward weights in SR-Dyna agent.")
     alpha_sr: Optional[float] = Field(default=None, description="Learning rate for the successor representation in SR-Dyna agent.")
