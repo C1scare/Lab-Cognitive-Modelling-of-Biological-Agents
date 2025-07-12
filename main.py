@@ -55,7 +55,7 @@ def optimize_run(hyperparameterScheduler: HyperparameterScheduler):
         #hyperparameters.alpha_C = 0.9
         pass
     experiment = Experiment(
-        experiment_name=f"{hyperparameterScheduler.agent_type.value.replace(' ', '_')}_{hyperparameterScheduler.optimization_type.value}_{timestamp}_random_policy",
+        experiment_name=f"{hyperparameterScheduler.agent_type.value.replace(' ', '_')}_{hyperparameterScheduler.optimization_type.value}_{timestamp}_sampling_policy",
         agent_type=hyperparameterScheduler.agent_type,
         hyperparameters=hyperparameters,
         maze_scheduler=MazeScheduler(first=26, last=27, trials_maze=75),

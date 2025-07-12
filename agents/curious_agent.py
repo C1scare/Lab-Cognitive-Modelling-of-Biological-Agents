@@ -142,19 +142,19 @@ class CuriousAgent(BayesianQLearningAgent):
         Returns:
             Action: The action selected by the agent.
         """
-        #'''
+        '''
         epsilon = min(1.0, self.epsilon + (1-self.alpha_tau) * np.max(self.curiosity[state,:]))
         if random.random() < epsilon:
             return random.choice(self.action_space)
-        return super().thompson_sample_action(state)
+        return self.thompson_sample_action(state)
         '''
         if random.random() < self.epsilon:
             # Select a random action with probability epsilon
             return random.choice(self.action_space)
-        return self.thompson_sample_action(state)
-        '''
+        return self.curious_thompson_sample_action(state)
+        #'''
     
-    def thompson_sample_action(self, state: Tuple[int, int]) -> Action:
+    def curious_thompson_sample_action(self, state: Tuple[int, int]) -> Action:
         """
         Selects an action using Thompson Sampling.
         Samples a Q-value from the distribution of each action and chooses the best.
