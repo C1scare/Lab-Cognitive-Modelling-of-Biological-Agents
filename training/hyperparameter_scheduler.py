@@ -46,20 +46,20 @@ class HyperparameterScheduler:
 
         elif self.agent_type == AgentType.BAYESIAN_Q_LEARNING:
             self.hyperparameter_ranges: dict = {
-                    "alpha": (0.01, 0.1),
-                    "gamma": (0.9, 0.99),
-                    "epsilon": (0.1, 0.5),
-                    "mu_init": (0.0, 1.0),
-                    "sigma_sq_init": (0.1, 2.0),
-                    "obs_noise_variance": (0.01, 0.5)
-                }
+                "alpha": (0.01, 0.1),
+                "gamma": (0.9, 0.99),
+                "epsilon": (0.1, 0.5),
+                "mu_init": (0.0, 1.0),
+                "sigma_sq_init": (0.1, 2.0),
+                "obs_noise_variance": (0.01, 0.5)
+            }
 
         elif self.agent_type == AgentType.CURIOUS_AGENT:
             self.hyperparameter_ranges: dict = {
                 "gamma": (0.9, 0.99),
                 "epsilon": (0.1, 0.5),
                 "mu_init": (0.0, 1.0),
-                "sigma_sq_init": (0.1, 1.0),
+                "sigma_sq_init": (0.1, 2.0),
                 "obs_noise_variance": (0.01, 0.5),
                 "curiosity_init": (0.1, 1.0),
                 "alpha_C": (0.5, 0.99),
@@ -96,7 +96,7 @@ class HyperparameterScheduler:
         else:
             raise ValueError(f"Unsupported agent type: {self.agent_type}")
     
-    @retry.retry(tries=3,)
+    @retry.retry(tries=3)
     def _objective(self, trial: optuna.Trial) -> float:
         """
         Objective function for hyperparameter optimization.

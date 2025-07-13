@@ -16,7 +16,6 @@ def single_experiment_run(experiment: Experiment):
     experiment_result = experiment.run_experiment()
     app = experiment.create_dashboard(experiment_result)
     return app
-    return None
 
 def load_experiment(experiment_name: str, storage_path: str = "experiments/", port: int = 8050):
     """
@@ -41,7 +40,7 @@ def optimize_run(hyperparameterScheduler: HyperparameterScheduler):
     best_params, best_value = hyperparameterScheduler.start_optimization()
     print(f"Best hyperparameters: {best_params}")
     print(f"Best value: {best_value}")
-    
+
     # Run the experiment with the best hyperparameters
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     hyperparameters = Hyperparameter(**best_params)
@@ -52,7 +51,6 @@ def optimize_run(hyperparameterScheduler: HyperparameterScheduler):
         #hyperparameters.usefulness_weight = 0.0
         #hyperparameters.uncertainty_weight = 0.0
         #hyperparameters.surprise_weight = 0.0
-        #hyperparameters.alpha_C = 0.9
         pass
     experiment = Experiment(
         experiment_name=f"{hyperparameterScheduler.agent_type.value.replace(' ', '_')}_{hyperparameterScheduler.optimization_type.value}_{timestamp}_sampling_policy",
@@ -67,13 +65,13 @@ async def run_multiple_dashboards():
     """Run multiple dashboards concurrently."""
     loop = asyncio.get_event_loop()
     tasks = [
-        loop.run_in_executor(None, load_experiment, "Bayesian_Q-learning_agent_optuna_20250707_024648_split_run_instance", "experiments/", 8050),
-        loop.run_in_executor(None, load_experiment, "Curious_Bayesian_Q-learning_agent_optuna_20250707_034600_split_run_instance", "experiments/", 8051),
-        loop.run_in_executor(None, load_experiment, "Noisy_Bayesian_Q-learning_agent_optuna_20250707_025642_split_run_instance", "experiments/", 8052),
-        loop.run_in_executor(None, load_experiment, "Noisy_Bayesian_Q-learning_agent_optuna_20250707_030838_split_run_instance", "experiments/", 8053),
-        loop.run_in_executor(None, load_experiment, "Noisy_Bayesian_Q-learning_agent_optuna_20250707_032910_split_run_instance", "experiments/", 8054),
-        loop.run_in_executor(None, load_experiment, "Q-learning_agent_optuna_20250707_040755_split_run_instance", "experiments/", 8055),
-        loop.run_in_executor(None, load_experiment, "SR-Dyna_agent_optuna_20250707_040655_split_run_instance", "experiments/", 8056),
+        loop.run_in_executor(None, load_experiment, "Bayesian_Q-learning_agent_optuna_20250707_024648_split_run_instance", "results/", 8050),
+        loop.run_in_executor(None, load_experiment, "Curious_Bayesian_Q-learning_agent_optuna_20250707_034600_split_run_instance", "results/", 8051),
+        loop.run_in_executor(None, load_experiment, "Noisy_Bayesian_Q-learning_agent_optuna_20250707_025642_split_run_instance", "results/", 8052),
+        loop.run_in_executor(None, load_experiment, "Noisy_Bayesian_Q-learning_agent_optuna_20250707_030838_split_run_instance", "results/", 8053),
+        loop.run_in_executor(None, load_experiment, "Noisy_Bayesian_Q-learning_agent_optuna_20250707_032910_split_run_instance", "results/", 8054),
+        loop.run_in_executor(None, load_experiment, "Q-learning_agent_optuna_20250707_040755_split_run_instance", "results/", 8055),
+        loop.run_in_executor(None, load_experiment, "SR-Dyna_agent_optuna_20250707_040655_split_run_instance", "results/", 8056),
     ]
     await asyncio.gather(*tasks)
 
@@ -142,9 +140,7 @@ if __name__ == "__main__":
     )
     #app = optimize_run(scheduler)
     app.run(debug=False, port=8050)
-    
-    #load_experiment("Curious_Bayesian_Q-learning_agent_optuna_20250710_121711_split_run_instance")
+
+    #load_experiment("Curious_Bayesian_Q-learning_agent_optuna_20250713_215758_sampling_policy_instance")
 
     #asyncio.run(run_multiple_dashboards())
-
-    

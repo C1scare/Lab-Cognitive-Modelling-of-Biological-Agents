@@ -2,7 +2,6 @@ from agents.bayesian_q_learning import BayesianQLearningAgent
 import numpy as np
 from typing import Tuple, Sequence
 from maze.basic_maze import Action
-from maze.basic_maze import BasicMaze
 from training.hyperparameter import Hyperparameter
 import random
 
@@ -97,7 +96,7 @@ class CuriousAgent(BayesianQLearningAgent):
         Calculate the usefulness of a state-action pair based on the Q-value distribution.
         This is typically represented by the mean of the Q-value distribution.
         """
-        return max(0, (y - self.q_dist_table[state[0], state[1], action.value, 0]))
+        return max(0, y - self.q_dist_table[state[0], state[1], action.value, 0])
 
     def calculate_uncertainty(self, state:Tuple[int, int], action:Action) -> float:
         """
@@ -132,6 +131,7 @@ class CuriousAgent(BayesianQLearningAgent):
         curiosity_value = (1-self.alpha_C) * self.curiosity[*state, action.value] + \
                           self.alpha_C * component_contributions
         self.curiosity[*state, action.value] = curiosity_value
+
         return curiosity_value
     
     def select_action(self, state: Tuple[int, int]) -> Action:
@@ -188,6 +188,5 @@ class CuriousAgent(BayesianQLearningAgent):
         """
         y, mu_sa_prior, tau_sa_prior = super().calculate_bellman_target(state, action, reward, next_state, done)
         _ = self.calculate_curiosity(state, action, next_state, y)
-        #y += self.calculate_curiosity(state, action, next_state, y)
         self.bayesian_update(state, action, y, mu_sa_prior, tau_sa_prior)
         self.visited[state] += 1
