@@ -46,7 +46,6 @@ class HyperparameterScheduler:
 
         elif self.agent_type == AgentType.BAYESIAN_Q_LEARNING:
             self.hyperparameter_ranges: dict = {
-                "alpha": (0.01, 0.1),
                 "gamma": (0.9, 0.99),
                 "epsilon": (0.1, 0.5),
                 "mu_init": (0.0, 1.0),
@@ -79,7 +78,7 @@ class HyperparameterScheduler:
                 "mu_init": (0.0, 1.0),
                 "sigma_sq_init": (0.1, 2.0),
                 "obs_noise_variance": (0.01, 0.5),
-                "k_pn": (0.1, 1.0),
+                "k_pn": (0.01, 0.5),
                 "sigma_nn": (0.1, 1.0),
                 "noise_mode": self.noise_mode
             }
@@ -108,7 +107,6 @@ class HyperparameterScheduler:
         # Extract hyperparameters from the trial
         if self.agent_type == AgentType.BAYESIAN_Q_LEARNING:
             hyperparameters = {
-                "alpha": trial.suggest_float("alpha", *self.hyperparameter_ranges["alpha"]),
                 "gamma": trial.suggest_float("gamma", *self.hyperparameter_ranges["gamma"]),
                 "epsilon": trial.suggest_float("epsilon", *self.hyperparameter_ranges["epsilon"]),
                 "mu_init": trial.suggest_float("mu_init", *self.hyperparameter_ranges["mu_init"]),
@@ -140,6 +138,11 @@ class HyperparameterScheduler:
 
         elif self.agent_type == AgentType.NOISY_AGENT:
             hyperparameters = {
+                #"gamma": 0.9614119708167211,
+                #"epsilon": 0.13044035930570644,
+                #"mu_init": 0.5864763204375096,
+                #"sigma_sq_init": 1.7040201847402174,
+                #"obs_noise_variance": 0.06525897001368647,
                 "gamma": trial.suggest_float("gamma", *self.hyperparameter_ranges["gamma"]),
                 "epsilon": trial.suggest_float("epsilon", *self.hyperparameter_ranges["epsilon"]),
                 "mu_init": trial.suggest_float("mu_init", *self.hyperparameter_ranges["mu_init"]),

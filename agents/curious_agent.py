@@ -134,7 +134,7 @@ class CuriousAgent(BayesianQLearningAgent):
 
         return curiosity_value
     
-    def select_action(self, state: Tuple[int, int]) -> Action:
+    def choose_action(self, state: Tuple[int, int]) -> Action:
         """
         Select an action based on the current state and the agent's policy.
         Args:
