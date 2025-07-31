@@ -6,27 +6,37 @@ from training.hyperparameter_scheduler import HyperparameterScheduler
 from maze.maze_scheduler import MazeScheduler
 from enums.hyperparam_opt_type import HyperparamOptType
 from enums.score_metric import ScoreMetric
+from maze.basic_maze import BasicMaze
 import datetime
 import pickle
 import asyncio
 
 
 def single_experiment_run(experiment: Experiment):
-    """ Run a single experiment and create a dashboard for it."""
+    """
+    Run a single experiment and create a dashboard for it.
+
+    Args:
+        experiment: An Experiment object to run.
+
+    Returns:
+        A Dash app instance for interactive visualization of the experiment results.
+    """
     experiment_result = experiment.run_experiment()
     app = experiment.create_dashboard(experiment_result)
     return app
 
 def load_experiment(experiment_name: str, storage_path: str = "experiments/", port: int = 8050):
     """
-    Load an experiment from a file.
-    
+    Load an experiment from a file and launch its dashboard.
+
     Args:
         experiment_name: Name of the experiment to load.
         storage_path: Path where the experiment results are stored.
-    
+        port: Port to run the dashboard on.
+
     Returns:
-        Experiment object loaded from the file.
+        None. Launches the Dash app for the loaded experiment.
     """
     file_path = f"{storage_path}{experiment_name}.pkl"
     with open(file_path, "rb") as f:
@@ -36,7 +46,15 @@ def load_experiment(experiment_name: str, storage_path: str = "experiments/", po
 
 
 def optimize_run(hyperparameterScheduler: HyperparameterScheduler):
-    """ Run the hyperparameter optimization process and execute the experiment with the best parameters."""
+    """
+    Run the hyperparameter optimization process and execute the experiment with the best parameters.
+
+    Args:
+        hyperparameterScheduler: HyperparameterScheduler instance to optimize and run.
+
+    Returns:
+        A Dash app instance for the experiment run with the best hyperparameters.
+    """
     best_params, best_value = hyperparameterScheduler.start_optimization()
     print(f"Best hyperparameters: {best_params}")
     print(f"Best value: {best_value}")
@@ -62,7 +80,15 @@ def optimize_run(hyperparameterScheduler: HyperparameterScheduler):
     return single_experiment_run(experiment)
 
 async def run_multiple_dashboards():
-    """Run multiple dashboards concurrently."""
+    """
+    Run multiple experiment dashboards concurrently on different ports.
+
+    This function demonstrates how to launch several Dash apps in parallel for
+    different experiment result files.
+
+    Returns:
+        None. Launches multiple Dash apps.
+    """
     loop = asyncio.get_event_loop()
     tasks = [
         loop.run_in_executor(None, load_experiment, "Bayesian_Q-learning_agent_optuna_20250707_024648_split_run_instance", "results/", 8050),
@@ -76,6 +102,11 @@ async def run_multiple_dashboards():
     await asyncio.gather(*tasks)
 
 if __name__ == "__main__":
+    """
+    Example entry point for running or optimizing experiments.
+
+    Uncomment the desired lines to run optimization or load experiments.
+    """
     # Initialize the experiment
     scheduler = HyperparameterScheduler(
         optimization_type=HyperparamOptType.OPTUNA,
@@ -120,7 +151,7 @@ if __name__ == "__main__":
         opt_score_metric=ScoreMetric.AVERAGE_REWARD,
         n_trials=150
     )
-    app = optimize_run(scheduler)
+    #app = optimize_run(scheduler)
 
     scheduler = HyperparameterScheduler(
         optimization_type=HyperparamOptType.OPTUNA,
@@ -139,8 +170,13 @@ if __name__ == "__main__":
         n_trials=150
     )
     #app = optimize_run(scheduler)
-    app.run(debug=False, port=8050)
+
+    # Uncomment to run the Dash app after training
+    #app.run(debug=False, port=8050)
 
     #load_experiment("Curious_Bayesian_Q-learning_agent_optuna_20250713_215758_sampling_policy_instance")
 
     #asyncio.run(run_multiple_dashboards())
+
+    # Uncomment to visualize a specific maze
+    #BasicMaze.render_maze_figure(26)
