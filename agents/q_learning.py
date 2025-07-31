@@ -9,12 +9,16 @@ class QLearningAgent(BaseAgent):
     """
     A simple Q-learning agent for grid-based environments like BasicMaze.
 
+    This agent learns an action-value function (Q-table) for each state-action pair
+    using the standard Q-learning algorithm with an epsilon-greedy exploration strategy.
+
     Attributes:
-        q_table: Q-values for each state-action pair.
-        alpha: Learning rate.
-        gamma: Discount factor.
-        epsilon: Exploration rate for ε-greedy policy.
+        q_table: 3D numpy array storing Q-values for each (state, action) pair.
+        alpha: Learning rate for Q-value updates.
+        gamma: Discount factor for future rewards.
+        epsilon: Exploration rate for epsilon-greedy policy.
         action_space: List of possible actions.
+        seed: Random seed for reproducibility (optional).
     """
 
     def __init__(
@@ -28,14 +32,15 @@ class QLearningAgent(BaseAgent):
         )
     ) -> None:
         """
-        Initialize the Q-learning agent with an empty Q-table.
+        Initialize the Q-learning agent with an empty Q-table and hyperparameters.
 
         Args:
-            maze_shape: Dimensions of the maze grid.
-            action_Space: List of possible actions (e.g., UP, DOWN, etc.).
-            alpha: Learning rate for Q-value updates.
-            gamma: Discount factor for future rewards.
-            epsilon: Initial exploration rate.
+            maze_shape: Dimensions of the maze grid as (rows, columns).
+            action_Space: List of possible actions (e.g., [Action.UP, Action.DOWN, ...]).
+            hyperparameters: Hyperparameter object with alpha, gamma, epsilon, and optional random_seed.
+
+        Raises:
+            ValueError: If any required hyperparameter is missing or invalid.
         """
         self.q_table = np.zeros((*maze_shape, len(action_Space)))
         if (hyperparameters.alpha is None or
@@ -53,13 +58,13 @@ class QLearningAgent(BaseAgent):
 
     def choose_action(self, state: Tuple[int, int]) -> Action:
         """
-        Select an action using ε-greedy strategy.
+        Select an action using the epsilon-greedy strategy.
 
         Args:
-            state: Current state of the agent in the maze.
+            state: Current state of the agent in the maze as (row, column).
 
         Returns:
-            An Action selected either randomly or greedily.
+            An Action selected either randomly (exploration) or greedily (exploitation).
         """
         if random.random() < self.epsilon:
             return random.choice(self.action_space)
@@ -79,10 +84,11 @@ class QLearningAgent(BaseAgent):
         Update the Q-value for a given state-action pair using the Bellman equation.
 
         Args:
-            state: Current state.
+            state: Current state (row, column).
             action: Action taken.
-            reward: Reward received.
+            reward: Reward received after taking the action.
             next_state: Resulting state after taking the action.
+            done: Whether the episode has ended (not used in standard Q-learning).
         """
         row, col = state
         next_row, next_col = next_state
@@ -94,7 +100,7 @@ class QLearningAgent(BaseAgent):
 
     def decay_epsilon(self, decay_rate: float = 0.99, min_epsilon: float = 0.01) -> None:
         """
-        Reduce the exploration rate over time.
+        Reduce the exploration rate epsilon over time.
 
         Args:
             decay_rate: Multiplicative factor to reduce epsilon.

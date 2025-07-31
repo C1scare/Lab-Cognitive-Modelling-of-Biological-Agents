@@ -8,10 +8,21 @@ from training.hyperparameter import Hyperparameter
 
 class NoisyAgent(BayesianQLearningAgent):
     """
-    A Noisy Q-learning agent that incorporates noise in the Q-value updates.
-    
-    Inherits from BayesianQLearningAgent to utilize its structure and methods,
-    while adding noise to the Q-value updates.
+    A Bayesian Q-learning agent that incorporates noise in the Q-value updates.
+
+    This agent extends BayesianQLearningAgent by adding two types of noise:
+    - Perceptual noise: Applied to the observed reward.
+    - Neural noise: Applied to the Bellman target value.
+
+    The type and magnitude of noise are controlled by the hyperparameters:
+        - k_pn: Magnitude of perceptual noise (proportional to reward).
+        - sigma_nn: Variance of neural noise.
+        - noise_mode: Specifies which noise(s) to apply (PERCEPTUAL, NEURAL, BOTH).
+
+    Attributes:
+        k_pn: Parameter for perceptual noise magnitude.
+        sigma_nn: Variance for neural noise.
+        noise_mode: Mode specifying which noise(s) to apply.
     """
     def __init__(
         self, 
@@ -34,14 +45,18 @@ class NoisyAgent(BayesianQLearningAgent):
         Args:
             maze_shape: Dimensions of the maze grid.
             action_space: List of possible actions (e.g., UP, DOWN, etc.).
-            gamma: Discount factor for future rewards.
-            epsilon: Initial exploration rate.
-            mu_init: Initial mean for the Gaussian Q-value distributions.
-            sigma_sq_init: Initial variance for the Gaussian Q-value distributions.
-            obs_noise_variance: Assumed variance of the Bellman target 'y'.
-            k_pn: Parameter for the magnitude of perceptual noise
-            sigma_nn: variance of neural noise proportional to the magnitude of neural noise
-            noise_mode: Mode of noise to apply (e.g., both perceptual and neural).
+            hyperparameters: Hyperparameter object with all required parameters for
+                             Bayesian Q-learning and noise configuration.
+                - gamma: Discount factor for future rewards.
+                - epsilon: Initial exploration rate.
+                - mu_init: Initial mean for the Gaussian Q-value distributions.
+                - sigma_sq_init: Initial variance for the Gaussian Q-value distributions.
+                - obs_noise_variance: Assumed variance of the Bellman target 'y'.
+                - k_pn: Parameter for the magnitude of perceptual noise.
+                - sigma_nn: Variance of neural noise.
+                - noise_mode: Mode of noise to apply (PERCEPTUAL, NEURAL, BOTH).
+        Raises:
+            ValueError: If required noise hyperparameters are missing or invalid.
         """
         super().__init__(
             maze_shape=maze_shape,
@@ -54,7 +69,7 @@ class NoisyAgent(BayesianQLearningAgent):
             raise ValueError("Hyperparameters must be provided with valid values.")
 
         self.k_pn = hyperparameters.k_pn
-        self.sigma_nn = hyperparameters.sigma_nn 
+        self.sigma_nn = hyperparameters.sigma_nn if hyperparameters.sigma_nn is not None else 0.0
         self.noise_mode = hyperparameters.noise_mode
         if hyperparameters.noise_mode in[NoiseMode.BOTH, NoiseMode.NEURAL] and self.sigma_nn <= 0:
             raise ValueError("Neural noise variance (sigma_nn) must be greater than 0 when neural noise is enabled.")
@@ -62,24 +77,32 @@ class NoisyAgent(BayesianQLearningAgent):
     def apply_perceptual_noise(self, reward: float) -> float:
         """
         Apply perceptual noise to the reward based on the k_pn parameter.
+
         Args:
             reward: The original reward value.
+
         Returns:
             The reward value after applying perceptual noise.
         """
         mu_pn = reward
+        if self.k_pn is None:
+            raise ValueError("k_pn must not be None when applying perceptual noise.")
         sigma_pn = self.k_pn * abs(mu_pn)
         return np.random.normal(mu_pn, sigma_pn)
 
     def apply_neural_noise(self, q_value: float) -> float:
         """
         Apply neural noise to the Q-value based on the sigma_nn parameter.
+
         Args:
             q_value: The original Q-value.
+
         Returns:
             The Q-value after applying neural noise.
         """
-        return np.random.normal(q_value, self.sigma_nn)
+        if self.sigma_nn is None:
+            raise ValueError("sigma_nn must not be None when applying neural noise.")
+        return np.random.normal(q_value, float(self.sigma_nn))
         
     def learn(
         self, 

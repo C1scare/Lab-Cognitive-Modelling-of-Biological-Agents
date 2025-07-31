@@ -4,19 +4,23 @@ from typing import Tuple, Sequence
 from maze.basic_maze import Action
 from agents.base_agent import BaseAgent
 from training.hyperparameter import Hyperparameter
-from maze.basic_maze import BasicMaze
 
 
 class BayesianQLearningAgent(BaseAgent):
     """
-    A Bayesian Q-learning agent for grid-based environments like BasicMaze.
-    
+    A Bayesian Q-learning agent for grid-based environments.
+
+    This agent maintains a Gaussian distribution (mean and variance) for each Q-value,
+    allowing for uncertainty-aware exploration using Thompson Sampling and Bayesian updates.
+
     Attributes:
-        q_table: Q-values for each state-action pair.
-        alpha: Learning rate.
-        gamma: Discount factor.
+        q_dist_table: 4D numpy array storing [mean, variance] for each (state, action) pair.
+        alpha: Learning rate (from hyperparameters, may not be used directly).
+        gamma: Discount factor for future rewards.
         epsilon: Exploration rate for ε-greedy policy.
         action_space: List of possible actions.
+        tau_obs: Precision (inverse variance) of the Bellman target.
+        seed: Random seed for reproducibility.
     """
 
     def __init__(
@@ -32,18 +36,19 @@ class BayesianQLearningAgent(BaseAgent):
         )
     ) -> None:
         """
-        Initialize the Bayesian Q-learning agent with an empty Q-table.
+        Initialize the Bayesian Q-learning agent.
         
         Args:
             maze_shape: Dimensions of the maze grid.
             action_space: List of possible actions (e.g., UP, DOWN, etc.).
-            gamma: Discount factor for future rewards.
-            epsilon: Initial exploration rate.
-            mu_init (float): Initial mean for the Gaussian Q-value distributions.
-            sigma_sq_init (float): Initial variance for the Gaussian Q-value distributions.
-                                   Should be relatively high to encourage exploration.
-            obs_noise_variance (float): Assumed variance of the Bellman target 'y'.
-                                        A smaller value means higher confidence in each new target.
+            hyperparameters: Hyperparameter object with the following attributes:
+                - gamma: Discount factor for future rewards.
+                - epsilon: Initial exploration rate.
+                - mu_init: Initial mean for the Gaussian Q-value distributions.
+                - sigma_sq_init: Initial variance for the Gaussian Q-value distributions.
+                - obs_noise_variance: Assumed variance of the Bellman target 'y'.
+        Raises:
+            ValueError: If any required hyperparameter is missing or invalid.
         """
         if(hyperparameters.gamma is None or
            hyperparameters.epsilon is None or

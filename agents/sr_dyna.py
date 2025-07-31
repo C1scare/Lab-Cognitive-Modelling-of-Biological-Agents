@@ -10,18 +10,19 @@ from training.hyperparameter import Hyperparameter
 
 class SRDynaAgent(BaseAgent):
     """
-    An agent that implements the SR-Dyna algorithm as described in the provided paper.
+    An agent implementing the SR-Dyna algorithm for grid-based environments.
 
     SR-Dyna learns a state-action successor representation (H-matrix) and a reward
     weight vector (w). Q-values are computed from the dot product of these two.
-    It utilizes offline replay of experienced transitions to update the successor
-    representation, allowing it to adapt to changes in the environment's dynamics.
+    The agent uses both online (on-policy) and offline (off-policy, Dyna-style) replay
+    of experienced transitions to update the successor representation, allowing it to
+    adapt to changes in the environment's dynamics.
 
     Attributes:
         maze_shape: The dimensions (rows, cols) of the grid environment.
-        action_space: A sequence of possible actions.
-        H: The state-action successor matrix.
-        w: The reward weight vector.
+        action_space: List of possible actions.
+        H: The state-action successor matrix (shape: [num_state_actions, num_state_actions]).
+        w: The reward weight vector (shape: [num_state_actions]).
         experience_buffer: A deque to store past transitions for replay.
         alpha_sr: Learning rate for the successor representation (H).
         alpha_w: Learning rate for the reward weights (w).
@@ -31,6 +32,7 @@ class SRDynaAgent(BaseAgent):
         num_actions: The total number of possible actions.
         num_states: The total number of states in the maze.
         total_state_actions: The combined size of the state-action space.
+        seed: Random seed for reproducibility (optional).
     """
 
     def __init__(
@@ -49,10 +51,18 @@ class SRDynaAgent(BaseAgent):
         Initializes the SR-Dyna agent.
 
         Args:
-            maze_shape: Dimensions of the maze grid.
+            maze_shape: Dimensions of the maze grid as (rows, columns).
             action_space: List of possible actions.
-            hyperparameters: An object containing learning parameters like
-                             alpha_w, alpha_sr, gamma, epsilon, and k.
+            hyperparameters: An object containing learning parameters:
+                - alpha_w: Learning rate for the reward weights (w).
+                - alpha_sr: Learning rate for the successor representation (H).
+                - gamma: Discount factor for future rewards.
+                - epsilon: Exploration rate for the ε-greedy policy.
+                - k: Number of transitions to replay from the buffer in each learning step.
+                - random_seed: (Optional) Random seed for reproducibility.
+
+        Raises:
+            AttributeError: If required hyperparameters are missing.
         """
         if not all(hasattr(hyperparameters, attr) for attr in ['alpha_w', 'alpha_sr', 'gamma', 'epsilon', 'k']):
             raise AttributeError("Provided hyperparameters are missing one or more required attributes for SRDynaAgent: 'alpha_w', 'alpha_sr', 'k'.")
@@ -68,11 +78,11 @@ class SRDynaAgent(BaseAgent):
         # Initialize w as a zero vector [cite: 521]
         self.w = np.zeros(self.total_state_actions)
 
-        self.gamma = hyperparameters.gamma
-        self.epsilon = hyperparameters.epsilon
-        self.alpha_sr = hyperparameters.alpha_sr
-        self.alpha_w = hyperparameters.alpha_w
-        self.k = hyperparameters.k
+        self.gamma = hyperparameters.gamma if hyperparameters.gamma is not None else 0.95
+        self.epsilon = hyperparameters.epsilon if hyperparameters.epsilon is not None else 0.1
+        self.alpha_sr = hyperparameters.alpha_sr if hyperparameters.alpha_sr is not None else 0.3
+        self.alpha_w = hyperparameters.alpha_w if hyperparameters.alpha_w is not None else 0.3
+        self.k = hyperparameters.k if hyperparameters.k is not None else 10
         
         self.experience_buffer = deque()
         
@@ -82,16 +92,32 @@ class SRDynaAgent(BaseAgent):
             np.random.seed(self.seed)
 
     def _map_state_action_to_index(self, state: Tuple[int, int], action: Action) -> int:
-        """Helper to convert a (state, action) pair to a flat index."""
+        """
+        Convert a (state, action) pair to a flat index for use in H and w.
+
+        Args:
+            state: The (row, column) position in the maze.
+            action: The action taken.
+
+        Returns:
+            An integer index corresponding to the (state, action) pair.
+        """
         row, col = state
         state_index = row * self.maze_shape[1] + col
         return state_index * self.num_actions + action.value
 
     def _get_q_values_for_state(self, state: Tuple[int, int]) -> np.ndarray:
         """
-        Computes the Q-values for all actions in a given state.
+        Compute the Q-values for all actions in a given state.
+
         Q(s,a) is calculated as the dot product of the corresponding row in the 
-        successor matrix H and the weight vector w. [cite: 310, 313]
+        successor matrix H and the weight vector w.
+
+        Args:
+            state: The (row, column) position in the maze.
+
+        Returns:
+            A numpy array of Q-values for each action.
         """
         q_values = np.zeros(self.num_actions)
         for action in self.action_space:
@@ -102,7 +128,13 @@ class SRDynaAgent(BaseAgent):
 
     def choose_action(self, state: Tuple[int, int]) -> Action:
         """
-        Selects an action using an ε-greedy policy based on the current Q-values. [cite: 532]
+        Select an action using an ε-greedy policy based on the current Q-values.
+
+        Args:
+            state: The (row, column) position in the maze.
+
+        Returns:
+            The selected Action.
         """
         if random.random() < self.epsilon:
             return random.choice(self.action_space)
@@ -120,8 +152,15 @@ class SRDynaAgent(BaseAgent):
         done: bool = False
     ) -> None:
         """
-        Updates the agent's knowledge, including online updates to H and w,
+        Update the agent's knowledge, including online updates to H and w,
         storing the experience, and triggering offline replay to update H.
+
+        Args:
+            state: The previous state (row, column).
+            action: The action taken.
+            reward: The reward received.
+            next_state: The resulting state after the action.
+            done: Whether the episode has ended (not used in SR-Dyna).
         """
         # --- 1. Store Experience ---
         self.experience_buffer.append((state, action, reward, next_state))
@@ -153,7 +192,12 @@ class SRDynaAgent(BaseAgent):
 
     def _replay_experience(self, state: Tuple[int, int], action: Action, next_state: Tuple[int, int]) -> None:
         """
-        Performs an off-policy update on the H matrix for a single replayed transition.
+        Perform an off-policy update on the H matrix for a single replayed transition.
+
+        Args:
+            state: The (row, column) position in the maze.
+            action: The action taken.
+            next_state: The resulting state after the action.
         """
         sa_idx = self._map_state_action_to_index(state, action)
 
@@ -169,5 +213,11 @@ class SRDynaAgent(BaseAgent):
         self.H[sa_idx, :] += self.alpha_sr * h_td_error
 
     def decay_epsilon(self, decay_rate: float = 0.99, min_epsilon: float = 0.01) -> None:
-        """Reduces the exploration rate over time."""
+        """
+        Reduce the exploration rate epsilon over time.
+
+        Args:
+            decay_rate: Multiplicative factor to reduce epsilon.
+            min_epsilon: Lower bound for epsilon.
+        """
         self.epsilon = max(min_epsilon, self.epsilon * decay_rate)
