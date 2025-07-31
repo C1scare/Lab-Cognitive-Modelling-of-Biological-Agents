@@ -11,6 +11,22 @@ import retry
 
 
 class HyperparameterScheduler:
+    """
+    Schedules and optimizes hyperparameters for RL agents using various optimization strategies.
+
+    Supports Optuna-based optimization (and placeholders for grid/random search).
+    Handles agent-specific hyperparameter ranges and noise settings.
+
+    Attributes:
+        optimization_type: Type of optimization (e.g., OPTUNA, GRID_SEARCH).
+        agent_type: Which agent to optimize (Q_LEARNING, BAYESIAN_Q_LEARNING, etc.).
+        noise_mode: Noise mode for NoisyAgent (PERCEPTUAL, NEURAL, BOTH, NONE).
+        opt_score_metric: ScoreMetric to optimize (e.g., MAX_REWARD).
+        n_trials: Number of optimization trials.
+        seed: Random seed for reproducibility.
+        hyperparameter_ranges: Dict of hyperparameter search ranges (set by _setup_hyperparam_ranges).
+    """
+
     def __init__(self,
                 optimization_type:HyperparamOptType = HyperparamOptType.OPTUNA,
                 agent_type: AgentType = AgentType.BAYESIAN_Q_LEARNING,
@@ -21,10 +37,17 @@ class HyperparameterScheduler:
                 ):
         """
         Initialize the hyperparameter scheduler.
+
         Args:
-            optimization_type: Type of optimization to use (e.g., "grid_search", "random_search").
+            optimization_type: Type of optimization to use (e.g., OPTUNA, GRID_SEARCH).
             agent_type: Type of agent for which to optimize hyperparameters.
-            hyperparameter_ranges: Dictionary defining the ranges for each hyperparameter.
+            noise_mode: Noise mode for NoisyAgent (PERCEPTUAL, NEURAL, BOTH, NONE).
+            opt_score_metric: ScoreMetric to optimize (e.g., MAX_REWARD).
+            n_trials: Number of optimization trials.
+            random_seed: Seed for reproducibility.
+
+        Raises:
+            ValueError: If noise_mode is set for a non-noisy agent.
         """
         self.optimization_type = optimization_type
         self.agent_type = agent_type
@@ -37,6 +60,9 @@ class HyperparameterScheduler:
         self.seed = random_seed  # Seed for reproducibility
 
     def _setup_hyperparam_ranges(self):
+        """
+        Set up the hyperparameter search ranges for the selected agent type.
+        """
         if self.agent_type == AgentType.Q_LEARNING:
             self.hyperparameter_ranges: dict = {
                 "alpha": (0.01, 0.1),
@@ -99,8 +125,10 @@ class HyperparameterScheduler:
     def _objective(self, trial: optuna.Trial) -> float:
         """
         Objective function for hyperparameter optimization.
+
         Args:
             trial: A trial object from the optimization library.
+
         Returns:
             Score metric value based on the agent's performance.
         """
@@ -173,6 +201,12 @@ class HyperparameterScheduler:
     def _run_optuna(self, n_trials: int = 100) -> tuple:
         """
         Executes hyperparameter optimization using Optuna.
+
+        Args:
+            n_trials: Number of optimization trials.
+
+        Returns:
+            Tuple of (best_params, best_value) from the study.
         """
         print("\n" + "="*80)
         print(f"Starting Optuna Optimization for '{self.agent_type}' (maximizing '{self.opt_score_metric}')...")
@@ -195,6 +229,13 @@ class HyperparameterScheduler:
     def start_optimization(self) -> tuple:
         """
         Starts the hyperparameter optimization process based on the specified optimization type.
+
+        Returns:
+            Tuple of (best_params, best_value) for the chosen optimization method.
+
+        Raises:
+            NotImplementedError: If the selected optimization type is not implemented.
+            ValueError: If the optimization type is unsupported.
         """
         self._setup_hyperparam_ranges()
 
