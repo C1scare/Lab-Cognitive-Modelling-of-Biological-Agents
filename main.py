@@ -27,7 +27,7 @@ def single_experiment_run(experiment: Experiment):
     app = experiment.create_dashboard(experiment_result)
     return app
 
-def load_experiment(experiment_name: str, storage_path: str = "experiments/", port: int = 8050):
+def load_experiment(experiment_name: str, storage_path: str = "results", port: int = 8050):
     """
     Load an experiment from a file and launch its dashboard.
 
@@ -39,7 +39,9 @@ def load_experiment(experiment_name: str, storage_path: str = "experiments/", po
     Returns:
         None. Launches the Dash app for the loaded experiment.
     """
-    file_path = f"{storage_path}{experiment_name}.pkl"
+    print(f"Loading experiment: {experiment_name} from {storage_path}\n \
+          This may take a few seconds depending on the size of the experiment data.")
+    file_path = f"{storage_path}/{experiment_name}.pkl"
     with open(file_path, "rb") as f:
         experiment:Experiment = pickle.load(f)
     app = experiment.create_dashboard(experiment.scores)
@@ -66,6 +68,7 @@ def optimize_run(hyperparameterScheduler: HyperparameterScheduler):
     hyperparameters.noise_mode = hyperparameterScheduler.noise_mode
     hyperparameters.episodes = 150
 
+    # Optimized hyperparameters for Bayesian Q-learning agent, which can be used and set here for training
     #hyperparameters.gamma = 0.9614119708167211
     #hyperparameters.epsilon = 0.13044035930570644
     #hyperparameters.mu_init = 0.5864763204375096
@@ -93,13 +96,13 @@ async def run_multiple_dashboards():
     """
     loop = asyncio.get_event_loop()
     tasks = [
-        loop.run_in_executor(None, load_experiment, "Bayesian_Q-learning_agent_optuna_20250715_223504_sampling_policy_instance", "results/", 8050),
-        loop.run_in_executor(None, load_experiment, "Curious_Bayesian_Q-learning_agent_optuna_20250716_014733_sampling_policy_instance", "results/", 8051),
-        loop.run_in_executor(None, load_experiment, "Perceptual_Noisy_Bayesian_Q-learning_agent_optuna_20250715_232559_sampling_policy_instance_kPN02", "results/", 8052),
-        loop.run_in_executor(None, load_experiment, "Neural_Noisy_Bayesian_Q-learning_agent_optuna_20250715_235845_sampling_policy_instance_sNN02", "results/", 8053),
-        loop.run_in_executor(None, load_experiment, "Both_Noisy_Bayesian_Q-learning_agent_optuna_20250716_001326_sampling_policy_instance", "results/", 8054),
-        loop.run_in_executor(None, load_experiment, "Q-learning_agent_optuna%150_250%20026%5027_maxsteps%30_instance", "results/", 8055),
-        loop.run_in_executor(None, load_experiment, "SR-Dyna_agent_optuna%150_250%20026%5027_maxsteps%30_instance", "results/", 8056),
+        loop.run_in_executor(None, load_experiment, "Bayesian_Q-learning_agent_optuna_20250715_224136_sampling_policy_instance", "results", 8050),
+        loop.run_in_executor(None, load_experiment, "Curious_Bayesian_Q-learning_agent_optuna_20250716_014733_sampling_policy_instance", "results", 8051),
+        loop.run_in_executor(None, load_experiment, "Perceptual_Noisy_Bayesian_Q-learning_agent_optuna_20250715_232559_sampling_policy_instance_kPN01", "results", 8052),
+        loop.run_in_executor(None, load_experiment, "Neural_Noisy_Bayesian_Q-learning_agent_optuna_20250715_235845_sampling_policy_instance_sNN02", "results", 8053),
+        loop.run_in_executor(None, load_experiment, "Both_Noisy_Bayesian_Q-learning_agent_optuna_20250716_025934_sampling_policy_instance_bhyp", "results", 8054),
+        loop.run_in_executor(None, load_experiment, "Q-learning_agent_optuna%150_250%20026%5027_maxsteps%30_instance", "results", 8055),
+        loop.run_in_executor(None, load_experiment, "SR-Dyna_agent_optuna%150_250%20026%5027_maxsteps%30_instance", "results", 8056),
     ]
     await asyncio.gather(*tasks)
 
@@ -157,7 +160,13 @@ if __name__ == "__main__":
         if not experiment_name:
             print("Please specify --experiment_name for load mode.")
         else:
-            load_experiment(experiment_name, port=port)
+            # If the experiment name contains a folder, split it
+            if "/" in experiment_name or "\\" in experiment_name:
+                # Handle both forward and backward slashes for cross-platform compatibility
+                folder, experiment_name = experiment_name.replace("\\", "/").split("/")
+            else:
+                folder, experiment_name = experiment_name.split("/") if "/" in experiment_name else (experiment_name, "results")
+            load_experiment(experiment_name, port=port, storage_path=folder)
     elif mode == "multi":
         asyncio.run(run_multiple_dashboards())
     elif mode == "render":

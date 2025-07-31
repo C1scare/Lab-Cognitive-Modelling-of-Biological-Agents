@@ -20,6 +20,13 @@ Create the environment using the following command:
 conda env create -f "PATH_TO_lab_env.yml"
 ```
 
+After creating the environment, activate it with:
+
+```bash
+conda activate lab_env
+```
+In case this doesn't work out in VSCode, press Ctrl+P and search for "> Python: Select Interpreter" to select the corresponding conda environment.
+
 ---
 
 ## Command-Line Usage
@@ -43,6 +50,7 @@ python main.py --mode <mode> [--agent <agent>] [--experiment_name <name>] [--maz
 
 - `--mode multi`  
   Launch multiple experiment dashboards concurrently (for demo purposes).
+  For closing the application you need to restart the terminal, due to issues in parallel process management and dash.
 
 - `--mode render`  
   Render a maze by its ID.  
@@ -66,7 +74,7 @@ python main.py --mode optimize --agent bayesian --port 8050
 
 **Load a saved experiment:**
 ```bash
-python main.py --mode load --experiment_name Bayesian_Q-learning_agent_optuna_20250715_223504_sampling_policy_instance --port 8050
+python main.py --mode load --experiment_name experiments\Bayesian_Q-learning_agent_optuna_20250715_224136_sampling_policy_instance --port 8050
 ```
 
 **Render a specific maze:**

@@ -166,7 +166,7 @@ class HyperparameterScheduler:
 
         elif self.agent_type == AgentType.NOISY_AGENT:
             hyperparameters = {
-                # Optimized Hyperparameters from Bayesian Q-Learning
+                # Optimized Hyperparameters from Bayesian Q-Learning, which can be used and set here for optimization
                 #"gamma": 0.9614119708167211,
                 #"epsilon": 0.13044035930570644,
                 #"mu_init": 0.5864763204375096,
