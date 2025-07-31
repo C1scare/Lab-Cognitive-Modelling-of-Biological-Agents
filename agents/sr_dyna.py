@@ -2,8 +2,6 @@ import numpy as np
 import random
 from collections import deque
 from typing import Tuple, Sequence
-
-# Assuming the following classes are defined in these files
 from maze.basic_maze import Action
 from agents.base_agent import BaseAgent
 from training.hyperparameter import Hyperparameter
@@ -73,9 +71,9 @@ class SRDynaAgent(BaseAgent):
         self.num_states = maze_shape[0] * maze_shape[1]
         self.total_state_actions = self.num_states * self.num_actions
 
-        # Initialize H as an identity matrix [cite: 520]
+        # Initialize H as an identity matrix
         self.H = np.identity(self.total_state_actions)
-        # Initialize w as a zero vector [cite: 521]
+        # Initialize w as a zero vector
         self.w = np.zeros(self.total_state_actions)
 
         self.gamma = hyperparameters.gamma if hyperparameters.gamma is not None else 0.95
@@ -162,29 +160,29 @@ class SRDynaAgent(BaseAgent):
             next_state: The resulting state after the action.
             done: Whether the episode has ended (not used in SR-Dyna).
         """
-        # --- 1. Store Experience ---
+        # Store Experience
         self.experience_buffer.append((state, action, reward, next_state))
 
-        # --- 2. Online Update (On-Policy) ---
+        # Online Update (On-Policy)
         sa_idx = self._map_state_action_to_index(state, action)
         
         # To perform the SARSA-like update, we need the next action
         next_action = self.choose_action(next_state)
         s_prime_a_prime_idx = self._map_state_action_to_index(next_state, next_action)
 
-        # Update weights w using TD-learning rule (Eq 15) [cite: 313]
+        # Update weights w using TD-learning rule
         q_sa = self.H[sa_idx, :] @ self.w
         q_s_prime_a_prime = self.H[s_prime_a_prime_idx, :] @ self.w
         w_td_error = reward + self.gamma * q_s_prime_a_prime - q_sa
         self.w += self.alpha_w * w_td_error * self.H[sa_idx, :]
 
-        # Update successor matrix H using TD-learning rule (Eq 17) [cite: 314]
+        # Update successor matrix H using TD-learning rule
         identity_row = np.zeros(self.total_state_actions)
         identity_row[sa_idx] = 1
         h_td_error = identity_row + self.gamma * self.H[s_prime_a_prime_idx, :] - self.H[sa_idx, :]
         self.H[sa_idx, :] += self.alpha_sr * h_td_error
 
-        # --- 3. Offline Replay (Off-Policy Dyna Update) ---
+        # Offline Replay (Off-Policy Dyna Update)
         if len(self.experience_buffer) > self.k > 0:
             samples = random.choices(self.experience_buffer, k=self.k)
             for s_samp, a_samp, _, s_prime_samp in samples:
@@ -201,12 +199,12 @@ class SRDynaAgent(BaseAgent):
         """
         sa_idx = self._map_state_action_to_index(state, action)
 
-        # Find the best next action a* from the next state (off-policy) [cite: 318]
+        # Find the best next action a* from the next state (off-policy)
         q_values_next = self._get_q_values_for_state(next_state)
         best_next_action = Action(np.argmax(q_values_next))
         s_prime_a_star_idx = self._map_state_action_to_index(next_state, best_next_action)
 
-        # Update H with the optimal next state-action (Eq 18) [cite: 318]
+        # Update H with the optimal next state-action
         identity_row = np.zeros(self.total_state_actions)
         identity_row[sa_idx] = 1.0
         h_td_error = identity_row + self.gamma * self.H[s_prime_a_star_idx, :] - self.H[sa_idx, :]

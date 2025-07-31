@@ -10,6 +10,7 @@ from maze.basic_maze import BasicMaze
 import datetime
 import pickle
 import asyncio
+import argparse
 
 
 def single_experiment_run(experiment: Experiment):
@@ -64,12 +65,13 @@ def optimize_run(hyperparameterScheduler: HyperparameterScheduler):
     hyperparameters = Hyperparameter(**best_params)
     hyperparameters.noise_mode = hyperparameterScheduler.noise_mode
     hyperparameters.episodes = 150
-    if hyperparameterScheduler.agent_type == AgentType.CURIOUS_AGENT:
-        #hyperparameters.novelty_weight = 0.0
-        #hyperparameters.usefulness_weight = 0.0
-        #hyperparameters.uncertainty_weight = 0.0
-        #hyperparameters.surprise_weight = 0.0
-        pass
+
+    #hyperparameters.gamma = 0.9614119708167211
+    #hyperparameters.epsilon = 0.13044035930570644
+    #hyperparameters.mu_init = 0.5864763204375096
+    #hyperparameters.sigma_sq_init = 1.7040201847402174
+    #hyperparameters.obs_noise_variance = 0.06525897001368647
+
     experiment = Experiment(
         experiment_name=f"{hyperparameterScheduler.agent_type.value.replace(' ', '_')}_{hyperparameterScheduler.optimization_type.value}_{timestamp}_sampling_policy",
         agent_type=hyperparameterScheduler.agent_type,
@@ -91,92 +93,75 @@ async def run_multiple_dashboards():
     """
     loop = asyncio.get_event_loop()
     tasks = [
-        loop.run_in_executor(None, load_experiment, "Bayesian_Q-learning_agent_optuna_20250707_024648_split_run_instance", "results/", 8050),
-        loop.run_in_executor(None, load_experiment, "Curious_Bayesian_Q-learning_agent_optuna_20250707_034600_split_run_instance", "results/", 8051),
-        loop.run_in_executor(None, load_experiment, "Noisy_Bayesian_Q-learning_agent_optuna_20250707_025642_split_run_instance", "results/", 8052),
-        loop.run_in_executor(None, load_experiment, "Noisy_Bayesian_Q-learning_agent_optuna_20250707_030838_split_run_instance", "results/", 8053),
-        loop.run_in_executor(None, load_experiment, "Noisy_Bayesian_Q-learning_agent_optuna_20250707_032910_split_run_instance", "results/", 8054),
-        loop.run_in_executor(None, load_experiment, "Q-learning_agent_optuna_20250707_040755_split_run_instance", "results/", 8055),
-        loop.run_in_executor(None, load_experiment, "SR-Dyna_agent_optuna_20250707_040655_split_run_instance", "results/", 8056),
+        loop.run_in_executor(None, load_experiment, "Bayesian_Q-learning_agent_optuna_20250715_223504_sampling_policy_instance", "results/", 8050),
+        loop.run_in_executor(None, load_experiment, "Curious_Bayesian_Q-learning_agent_optuna_20250716_014733_sampling_policy_instance", "results/", 8051),
+        loop.run_in_executor(None, load_experiment, "Perceptual_Noisy_Bayesian_Q-learning_agent_optuna_20250715_232559_sampling_policy_instance_kPN02", "results/", 8052),
+        loop.run_in_executor(None, load_experiment, "Neural_Noisy_Bayesian_Q-learning_agent_optuna_20250715_235845_sampling_policy_instance_sNN02", "results/", 8053),
+        loop.run_in_executor(None, load_experiment, "Both_Noisy_Bayesian_Q-learning_agent_optuna_20250716_001326_sampling_policy_instance", "results/", 8054),
+        loop.run_in_executor(None, load_experiment, "Q-learning_agent_optuna%150_250%20026%5027_maxsteps%30_instance", "results/", 8055),
+        loop.run_in_executor(None, load_experiment, "SR-Dyna_agent_optuna%150_250%20026%5027_maxsteps%30_instance", "results/", 8056),
     ]
     await asyncio.gather(*tasks)
 
 if __name__ == "__main__":
     """
-    Example entry point for running or optimizing experiments.
+    Command-line entry point for running, optimizing, loading, or rendering experiments.
 
-    Uncomment the desired lines to run optimization or load experiments.
+    Use --mode to select operation:
+      - optimize: Run hyperparameter optimization for a specified agent.
+      - load: Load and visualize a saved experiment.
+      - multi: Launch multiple experiment dashboards concurrently.
+      - render: Render a maze by its ID.
     """
-    # Initialize the experiment
-    scheduler = HyperparameterScheduler(
-        optimization_type=HyperparamOptType.OPTUNA,
-        agent_type=AgentType.BAYESIAN_Q_LEARNING,
-        noise_mode=NoiseMode.NONE,
-        opt_score_metric=ScoreMetric.AVERAGE_REWARD,
-        n_trials=150
-    )
-    #app = optimize_run(scheduler)
+    parser = argparse.ArgumentParser(description="Run or optimize experiments.")
+    parser.add_argument("--mode", choices=["optimize", "load", "multi", "render"], required=True, help="Operation mode")
+    parser.add_argument("--agent", choices=[
+        "bayesian", "noisy_perceptual", "noisy_neural", "noisy_both", "curious", "sr_dyna", "q_learning"
+    ], help="Agent type for optimization")
+    parser.add_argument("--experiment_name", type=str, help="Experiment name to load")
+    parser.add_argument("--maze_id", type=int, help="Maze id to render")
+    parser.add_argument("--port", type=int, default=8050, help="Port for Dash app")
+    args = parser.parse_args()
 
-    scheduler = HyperparameterScheduler(
-        optimization_type=HyperparamOptType.OPTUNA,
-        agent_type=AgentType.NOISY_AGENT,
-        noise_mode=NoiseMode.PERCEPTUAL,
-        opt_score_metric=ScoreMetric.AVERAGE_REWARD,
-        n_trials=150
-    )
-    #app = optimize_run(scheduler)
+    agent_map = {
+        "bayesian":      (AgentType.BAYESIAN_Q_LEARNING, NoiseMode.NONE),
+        "noisy_perceptual": (AgentType.NOISY_AGENT, NoiseMode.PERCEPTUAL),
+        "noisy_neural":     (AgentType.NOISY_AGENT, NoiseMode.NEURAL),
+        "noisy_both":       (AgentType.NOISY_AGENT, NoiseMode.BOTH),
+        "curious":      (AgentType.CURIOUS_AGENT, NoiseMode.NONE),
+        "sr_dyna":      (AgentType.SR_DYNA_AGENT, NoiseMode.NONE),
+        "q_learning":   (AgentType.Q_LEARNING, NoiseMode.NONE),
+    }
 
-    scheduler = HyperparameterScheduler(
-        optimization_type=HyperparamOptType.OPTUNA,
-        agent_type=AgentType.NOISY_AGENT,
-        noise_mode=NoiseMode.NEURAL,
-        opt_score_metric=ScoreMetric.AVERAGE_REWARD,
-        n_trials=150
-    )
-    #app = optimize_run(scheduler)
+    mode: str = getattr(args, "mode")
+    agent: str | None = getattr(args, "agent", None)
+    experiment_name: str | None = getattr(args, "experiment_name", None)
+    maze_id: int | None = getattr(args, "maze_id", None)
+    port: int = getattr(args, "port", 8050)
 
-    scheduler = HyperparameterScheduler(
-        optimization_type=HyperparamOptType.OPTUNA,
-        agent_type=AgentType.NOISY_AGENT,
-        noise_mode=NoiseMode.BOTH,
-        opt_score_metric=ScoreMetric.AVERAGE_REWARD,
-        n_trials=150
-    )
-    #app = optimize_run(scheduler)
-
-    scheduler = HyperparameterScheduler(
-        optimization_type=HyperparamOptType.OPTUNA,
-        agent_type=AgentType.CURIOUS_AGENT,
-        noise_mode=NoiseMode.NONE,
-        opt_score_metric=ScoreMetric.AVERAGE_REWARD,
-        n_trials=150
-    )
-    #app = optimize_run(scheduler)
-
-    scheduler = HyperparameterScheduler(
-        optimization_type=HyperparamOptType.OPTUNA,
-        agent_type=AgentType.SR_DYNA_AGENT,
-        noise_mode=NoiseMode.NONE,
-        opt_score_metric=ScoreMetric.AVERAGE_REWARD,
-        n_trials=150
-    )
-    #app = optimize_run(scheduler)
-
-    scheduler = HyperparameterScheduler(
-        optimization_type=HyperparamOptType.OPTUNA,
-        agent_type=AgentType.Q_LEARNING,
-        noise_mode=NoiseMode.NONE,
-        opt_score_metric=ScoreMetric.AVERAGE_REWARD,
-        n_trials=150
-    )
-    #app = optimize_run(scheduler)
-
-    # Uncomment to run the Dash app after training
-    #app.run(debug=False, port=8050)
-
-    #load_experiment("Curious_Bayesian_Q-learning_agent_optuna_20250713_215758_sampling_policy_instance")
-
-    #asyncio.run(run_multiple_dashboards())
-
-    # Uncomment to visualize a specific maze
-    #BasicMaze.render_maze_figure(26)
+    if mode == "optimize":
+        if not agent:
+            print("Please specify --agent for optimize mode.")
+        else:
+            agent_type, noise_mode = agent_map[agent]
+            scheduler = HyperparameterScheduler(
+                optimization_type=HyperparamOptType.OPTUNA,
+                agent_type=agent_type,
+                noise_mode=noise_mode,
+                opt_score_metric=ScoreMetric.AVERAGE_REWARD,
+                n_trials=150
+            )
+            app = optimize_run(scheduler)
+            app.run(debug=False, port=port)
+    elif mode == "load":
+        if not experiment_name:
+            print("Please specify --experiment_name for load mode.")
+        else:
+            load_experiment(experiment_name, port=port)
+    elif mode == "multi":
+        asyncio.run(run_multiple_dashboards())
+    elif mode == "render":
+        if maze_id is None:
+            print("Please specify --maze_id for render mode.")
+        else:
+            BasicMaze.render_maze_figure(maze_id)

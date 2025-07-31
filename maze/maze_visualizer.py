@@ -16,15 +16,12 @@ Dependencies:
 - numpy, plotly, dash, dash_bootstrap_components
 """
 
-#from pydantic import BaseModel, Field
 from typing import List, Tuple, Dict, Union
 import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
 from collections import Counter, defaultdict
 import hashlib
-
-# Dash imports
 import dash
 from dash import dcc, html
 import dash_bootstrap_components as dbc
@@ -160,7 +157,6 @@ class MazeVisualizer:
             maze = maze_obj.maze.copy()
             maze[maze > 1] = 0
             trajectory = experiment_result.trajectory_history[episode]
-            # Use .get with a default of an empty array with the correct shape
             q_mean_data = experiment_result.q_mean_history.get(episode, np.zeros(maze.shape))
             curiosity_data = experiment_result.curiosity_history.get(episode, np.zeros(maze.shape))
             uncertainty_data = experiment_result.uncertainty_history.get(episode, np.zeros(maze.shape))
@@ -475,7 +471,7 @@ class MazeVisualizer:
 
                 current_frame_data.append(
                     go.Scatter(
-                        x=[current_x, next_x], y=[current_y, next_y], mode='lines', # Fixed: changed next_x to next_y
+                        x=[current_x, next_x], y=[current_y, next_y], mode='lines',
                         line=dict(color=edge_color, width=line_width),
                         hoverinfo='text', hovertext=f"Transition: ({current_y},{current_x}) -> ({next_y},{next_x})<br>Frequency: {count}",
                         showlegend=False, xaxis='x1', yaxis='y1'
@@ -795,7 +791,6 @@ class MazeVisualizer:
                             dcc.Graph(
                                 id='episode-trajectory-graph',
                                 figure=self.create_episode_view_with_slider(experiment_result),
-                                # height and width are now set in the figure object itself for better control
                                 style={'height': '800px'}
                             )
                         ]),
@@ -803,7 +798,6 @@ class MazeVisualizer:
                             dcc.Graph(
                                 id='averaged-trajectory-with-maze-graph',
                                 figure=self.create_averaged_trajectory_view(experiment_result, include_maze=True),
-                                # height and width are now set in the figure object itself for better control
                                 style={'height': '800px'}
                             )
                         ]),
@@ -811,7 +805,6 @@ class MazeVisualizer:
                             dcc.Graph(
                                 id='averaged-trajectory-no-maze-graph',
                                 figure=self.create_averaged_trajectory_view(experiment_result, include_maze=False),
-                                # height and width are now set in the figure object itself for better control
                                 style={'height': '800px'}
                             )
                         ]),
