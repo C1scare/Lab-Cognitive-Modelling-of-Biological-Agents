@@ -5,11 +5,22 @@ import numpy as np
 
 class MazeScheduler:
     """
-    Handles scheduling of mazes and start positions for agent training and testing.
+    Schedules mazes and start positions for agent training and testing.
 
     - Cycles through a range of mazes (from `first` to `last`).
     - For each maze, cycles through all possible start positions in random order.
     - Provides methods to get the next start cell or load the next maze.
+
+    Attributes:
+        first: ID of the first maze in the sequence.
+        last: ID of the last maze in the sequence.
+        trials_start: Number of resets before switching to the next start position.
+        trials_maze: Number of resets before switching to the next maze.
+        random_seed: Seed for reproducible shuffling of start positions.
+        reset_count: Counter for the number of resets.
+        start_index: Index of the current start position.
+        start_permutation: List of shuffled start positions for the current maze.
+        maze: The current BasicMaze instance.
     """
 
     def __init__(
@@ -20,6 +31,16 @@ class MazeScheduler:
         trials_maze: int = 10,
         random_seed: int = 42
     ):
+        """
+        Initialize the MazeScheduler.
+
+        Args:
+            first: ID of the first maze to use.
+            last: ID of the last maze to use.
+            trials_start: Number of resets before switching to the next start position.
+            trials_maze: Number of resets before switching to the next maze.
+            random_seed: Seed for reproducible shuffling of start positions.
+        """
         self.first = first
         self.current_maze_id = first
         self.last = last
@@ -35,6 +56,9 @@ class MazeScheduler:
         """
         Advances to the next start position if needed and returns it.
         Cycles after `trials_start` resets.
+
+        Returns:
+            The next start cell as a (row, col) tuple.
         """
         self.reset_count += 1
 
@@ -56,6 +80,15 @@ class MazeScheduler:
     def _load_maze(self, maze_id: int) -> BasicMaze:
         """
         Loads a maze by ID and shuffles its start positions.
+
+        Args:
+            maze_id: The ID of the maze to load.
+
+        Returns:
+            A BasicMaze instance initialized with a shuffled start cell.
+
+        Raises:
+            ValueError: If the maze_id is out of range.
         """
         if maze_id < 1 or maze_id > 27:
             raise ValueError("Maze ID must be between 1 and 27.")

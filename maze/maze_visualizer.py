@@ -1,3 +1,21 @@
+"""
+MazeVisualizer: Interactive visualization tools for maze-based RL experiments.
+
+This module provides the MazeVisualizer class, which creates interactive Plotly and Dash
+visualizations for agent trajectories, Q-values, curiosity, and uncertainty metrics
+across episodes and maze configurations. It supports both per-episode and averaged views,
+as well as summary plots for cumulative reward, curiosity, and uncertainty.
+
+Key Features:
+- Interactive episode slider for trajectory and metric heatmaps.
+- Averaged trajectory and metric views across maze configurations.
+- Cumulative reward, curiosity, and uncertainty plots.
+- Dash dashboard for experiment result exploration.
+
+Dependencies:
+- numpy, plotly, dash, dash_bootstrap_components
+"""
+
 #from pydantic import BaseModel, Field
 from typing import List, Tuple, Dict, Union
 import numpy as np
@@ -15,6 +33,15 @@ from training.experiment import Experiment
 
 # Helper function to safely get min/max for normalization
 def get_global_min_max(history_dict_or_list: Union[Dict[int, np.ndarray], List[float]]):
+    """
+    Compute global min and max for a list or dict of arrays for heatmap normalization.
+
+    Args:
+        history_dict_or_list: Dictionary of arrays or list of floats.
+
+    Returns:
+        Tuple (min_val, max_val) for normalization.
+    """
     all_values = []
     if isinstance(history_dict_or_list, dict):
         for episode_data in history_dict_or_list.values():
@@ -44,13 +71,34 @@ def get_global_min_max(history_dict_or_list: Union[Dict[int, np.ndarray], List[f
 
 class MazeVisualizer:
     """
-    A class to handle the visualization of a maze and agent trajectories,
-    including episode-specific views and averaged views across maze configurations.
+    Provides interactive visualization for maze RL experiments using Plotly and Dash.
+
+    Methods:
+        create_episode_view_with_slider: Interactive per-episode trajectory and metric heatmaps.
+        create_averaged_trajectory_view: Averaged trajectories and metrics across maze configs.
+        create_cumulative_rewards_figure: Line plot of cumulative reward per episode.
+        create_uncertainty_figure: Line plot of overall uncertainty per episode.
+        create_curiosity_figure: Line plot of overall curiosity per episode.
+        create_dashboard: Dash app for interactive experiment result exploration.
     """
 
     def _create_heatmap_trace(self, data: np.ndarray,
                                maze_shape: Tuple[int, int], min_val: float, max_val: float,
                                title: str, colorscale: str) -> go.Heatmap:
+        """
+        Helper to create a Plotly heatmap for a given metric.
+
+        Args:
+            data: 2D numpy array of metric values.
+            maze_shape: (rows, cols) of the maze.
+            min_val: Minimum value for color scaling.
+            max_val: Maximum value for color scaling.
+            title: Name for the heatmap.
+            colorscale: Plotly colorscale string.
+
+        Returns:
+            Plotly Heatmap object.
+        """
         rows, cols = maze_shape
         
         return go.Heatmap(
@@ -68,6 +116,12 @@ class MazeVisualizer:
         """
         Creates a Plotly figure with a slider to select and display individual episode trajectories,
         along with Q-mean, curiosity, and uncertainty heatmaps for that episode.
+
+        Args:
+            experiment_result: ExperimentResult object with trajectory and metric histories.
+
+        Returns:
+            Plotly Figure with animation slider for episodes.
         """
         fig = go.Figure()
         frames = []
@@ -311,6 +365,13 @@ class MazeVisualizer:
         Creates a Plotly figure visualizing averaged trajectories and averaged Q-mean, curiosity,
         and uncertainty heatmaps for different maze configurations. Includes a slider to select
         between unique maze configurations. Optionally includes the maze heatmap.
+
+        Args:
+            experiment_result: ExperimentResult object with histories.
+            include_maze: If True, show maze grid in the plot.
+
+        Returns:
+            Plotly Figure with animation slider for maze configs.
         """
         fig = go.Figure()
         frames = []
@@ -608,6 +669,12 @@ class MazeVisualizer:
     def create_cumulative_rewards_figure(self, experiment_result: ExperimentResult) -> go.Figure:
         """
         Creates a Plotly figure visualizing the cumulative rewards over episodes.
+
+        Args:
+            experiment_result: ExperimentResult object with cumulative_reward attribute.
+
+        Returns:
+            Plotly Figure of cumulative reward.
         """
         cumulative_reward = experiment_result.cumulative_reward
         fig = go.Figure()
@@ -634,6 +701,12 @@ class MazeVisualizer:
     def create_uncertainty_figure(self, experiment_result: ExperimentResult) -> go.Figure:
         """
         Creates a Plotly figure visualizing the overall uncertainty over episodes.
+
+        Args:
+            experiment_result: ExperimentResult object with uncertainties attribute.
+
+        Returns:
+            Plotly Figure of uncertainty.
         """
         uncertainty = experiment_result.uncertainties
         fig = go.Figure()
@@ -660,6 +733,12 @@ class MazeVisualizer:
     def create_curiosity_figure(self, experiment_result: ExperimentResult) -> go.Figure:
         """
         Creates a Plotly figure visualizing the overall curiosity over episodes.
+
+        Args:
+            experiment_result: ExperimentResult object with curiosity attribute.
+
+        Returns:
+            Plotly Figure of curiosity.
         """
         curiosity = experiment_result.curiosity
         fig = go.Figure()
@@ -688,8 +767,8 @@ class MazeVisualizer:
         Creates a Dash application dashboard to visualize experiment results.
 
         Args:
-            experiment_result (ExperimentResult): An object containing all experiment data.
-            experiment (Experiment): An object containing experiment configuration details.
+            experiment_result: An object containing all experiment data.
+            experiment: An object containing experiment configuration details.
 
         Returns:
             dash.Dash: The configured Dash application.

@@ -3,13 +3,42 @@ import numpy as np
 from matplotlib.colors import to_rgba
 
 class MazeRenderer:
+    """
+    Renders a grid-based maze environment using matplotlib.
+
+    This class visualizes the maze, agent, goal, and visited cells.
+    It supports efficient updates for animations and optional grid display.
+
+    Attributes:
+        agent_color: RGBA color for the agent.
+        goal_color: RGBA color for the goal cell.
+        show_grid: Whether to display grid lines.
+        _img_artist: Internal matplotlib image artist for efficient updates.
+    """
+    
     def __init__(self, agent_color='dodgerblue', goal_color='gold', show_grid=True):
+        """
+        Initialize the MazeRenderer.
+
+        Args:
+            agent_color: Color for the agent (default 'dodgerblue').
+            goal_color: Color for the goal cell (default 'gold').
+            show_grid: Whether to display grid lines (default True).
+    """
         self.agent_color = to_rgba(agent_color)
         self.goal_color = to_rgba(goal_color)
         self.show_grid = show_grid
         self._img_artist = None  # To store the imshow artist for efficient updates
 
     def render(self, env, agent_position, reward_positions=None):
+        """
+        Render the maze, agent, goal, and visited cells using matplotlib.
+
+        Args:
+            env: Maze environment object with .maze and .visited attributes.
+            agent_position: Tuple (row, col) for the agent's position.
+            reward_positions: Optional list of (row, col) tuples for goal/reward cells.
+        """
         maze = env.maze
         visited = env.visited if hasattr(env, 'visited') else set()
 
