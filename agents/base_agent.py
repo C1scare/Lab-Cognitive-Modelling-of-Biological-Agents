@@ -5,6 +5,9 @@ from maze.basic_maze import Action
 class BaseAgent(ABC):
     """
     Abstract base class for agents in grid-based environments.
+
+    Provides the interface for action selection and learning.
+    All agents must implement the choose_action and learn methods.
     """
     def __init__(
         self, 
@@ -15,8 +18,8 @@ class BaseAgent(ABC):
         Initialize the agent.
 
         Args:
-            maze_shape: Dimensions of the maze grid.
-            action_space: List of possible actions (e.g., UP, DOWN, etc.).
+            maze_shape: Dimensions of the maze grid as (rows, columns).
+            action_space: Sequence of possible actions ([Action.UP, Action.DOWN, Action.LEFT, Action.Right]).
         """
         self.action_space = list(action_space)
 
@@ -27,10 +30,10 @@ class BaseAgent(ABC):
         Select an action given the current state.
 
         Args:
-            state: Current position of the agent in the maze.
+            state: The agent's current position in the maze as (row, column).
 
         Returns:
-            An action to take.
+            The chosen action.
         """
         pass
 
@@ -44,12 +47,13 @@ class BaseAgent(ABC):
         done: bool = False
     ) -> None:
         """
-        Update the agent's knowledge using the observed transition.
+        Update the agent's knowledge based on the observed transition.
 
         Args:
-            state: The previous state.
-            action: The action taken.
-            reward: The reward received.
-            next_state: The resulting state.
+            state: Previous state (row, column).
+            action: Action taken.
+            reward: Reward received after taking the action.
+            next_state: Resulting state after the action.
+            done: Whether the episode has ended.
         """
         pass

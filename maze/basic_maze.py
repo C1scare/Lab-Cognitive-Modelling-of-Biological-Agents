@@ -2,7 +2,9 @@ from enum import Enum, IntEnum
 from typing import Tuple, Optional, Dict, Set, List
 import numpy as np
 import numpy.typing as npt
+import matplotlib.pyplot as plt
 from maze.maze_renderer import MazeRenderer
+from maze.maze_definitions import mazes
 
 class CellType(IntEnum):
     EMPTY = 0
@@ -23,9 +25,24 @@ class GameStatus(Enum):
 class BasicMaze:
     """
     A simple grid-based maze environment for agent navigation and reinforcement learning.
+
     The agent moves within a fixed-size maze with walls, empty cells, and a goal.
+    Supports agent movement, reward calculation, step limits, and rendering.
+
+    Attributes:
+        maze: The current maze layout as a 2D numpy array.
+        start_cell: The starting position of the agent.
+        goal_cell: The goal position in the maze.
+        max_steps: Maximum allowed steps before failure.
+        agent_position: The agent's current position.
+        steps: Number of steps taken in the current episode.
+        total_reward_environment: Cumulative reward collected in the current episode.
+        visited: Set of visited cells.
+        empty_cells: List of empty (non-wall) cells in the maze.
+        renderer: MazeRenderer instance for visualization.
+        maze_ID: Optional identifier for the maze.
+        random_seed: Random seed for reproducibility.
     """
-    maze_ID: int = 0
 
     actions: Dict[Action, Tuple[int, int]] = {
         Action.UP: (-1, 0),
@@ -36,17 +53,18 @@ class BasicMaze:
 
     # Reward configuration
     reward_goal: float = 10.0
-    penalty_move: float = -0.05
-    penalty_already_visited: float = -0.1
-    penalty_impossible_move: float = -0.5
+    penalty_move: float = -1
+    penalty_already_visited: float = -1 #unused in our experiments
+    penalty_impossible_move: float = -5
 
     def __init__(
         self, 
         maze: npt.NDArray[np.int_],
         start_cell: Tuple[int, int] = (0, 0),
         goal_cell: Optional[Tuple[int, int]] = None,
-        max_steps: int = 200,
-        random_seed: int = 42
+        max_steps: int = 30,
+        random_seed: int = 42,
+        maze_ID: Optional[int] = None
     ) -> None:
         """
         Initialize the maze environment.
@@ -56,6 +74,8 @@ class BasicMaze:
             start_cell: Starting coordinates of the agent.
             goal_cell: Goal coordinates (defaults to bottom-right).
             max_steps: Maximum allowed steps before failure.
+            random_seed: Random seed for reproducibility.
+            maze_ID: Optional identifier for the maze.
         """
         self._original_maze: npt.NDArray[np.int_] = maze
         self.maze: npt.NDArray[np.int_] = np.copy(maze)
@@ -73,6 +93,7 @@ class BasicMaze:
         self.reset(self.start_cell)
 
         self.random_seed: int = random_seed
+        self.maze_ID: Optional[int] = maze_ID
 
     def reset(self, start_cell: Tuple[int, int]) -> Tuple[int, int]:
         """
@@ -85,20 +106,26 @@ class BasicMaze:
             The initial agent position.
         """
         self.steps: int = 0
-        self.agent_position: Tuple[int, int] = start_cell
+        self.start_cell = start_cell
+        self.agent_position: Tuple[int, int] = self.start_cell
         self.maze = np.copy(self._original_maze)
-        row, col = start_cell
+        row, col = self.start_cell
         self.maze[row][col] = CellType.AGENT
         self.total_reward_environment: float = 0.0
-        self.visited: Set[Tuple[int, int]] = {start_cell}
+        self.visited: Set[Tuple[int, int]] = {self.start_cell}
 
-        # TODO: Return random start cell from list of start locations
         return self.agent_position
 
     def get_shape(self) -> Tuple[int, int]:
-        """Return the shape of the maze."""
-        return self.maze.shape
+        """
+        Return the shape of the maze as a tuple (rows, columns).
 
+        Returns:
+            Tuple of (number of rows, number of columns).
+        """
+        maze_shape: Tuple[int, int] = (int(self.maze.shape[0]), int(self.maze.shape[1]))
+        return maze_shape
+    
     def game_status(self) -> GameStatus:
         """
         Check the current game status.
@@ -115,7 +142,9 @@ class BasicMaze:
         return GameStatus.IN_PROGRESS
 
     def render(self) -> None:
-        """Render the maze using the MazeRenderer."""
+        """
+        Render the maze using the MazeRenderer.
+        """
         self.renderer.render(self, self.agent_position, reward_positions=[self.goal_cell])
 
     def step(self, action: Action) -> Tuple[Tuple[int, int], float, GameStatus]:
@@ -187,11 +216,16 @@ class BasicMaze:
             ValueError: If start or goal are invalid positions.
         """
         self.empty_cells: list[Tuple[int, int]] = [
-            (r, c)
+            (int(r), int(c))
             for r in range(nrows)
             for c in range(ncols)
             if self.maze[r][c] == CellType.EMPTY
         ]
+        sr, sc = map(int, self.start_cell)
+        self.start_cell = (sr, sc)
+        gr, gc = map(int, self.goal_cell)
+        self.goal_cell = (gr, gc)
+
         if self.goal_cell in self.empty_cells:
             self.empty_cells.remove(self.goal_cell)
 
@@ -204,7 +238,6 @@ class BasicMaze:
         if self.start_cell == self.goal_cell:
             raise ValueError("The agent cannot start on the goal cell.")
         
-        sr, sc = self.start_cell
         start_neighbors: List[Tuple[int, int]] = [(sr - 1, sc), (sr + 1, sc), (sr, sc - 1), (sr, sc + 1)]
         valid_start_neighbor_exists: bool = any(
             0 <= r < nrows and 0 <= c < ncols and self.maze[r][c] != CellType.WALL
@@ -213,7 +246,6 @@ class BasicMaze:
         if not valid_start_neighbor_exists:
             raise ValueError("Start cell must have at least one accessible neighboring cell.")
         
-        gr, gc = self.goal_cell
         goal_neighbors: List[Tuple[int, int]] = [(gr - 1, gc), (gr + 1, gc), (gr, gc - 1), (gr, gc + 1)]
         valid_goal_neighbor_exists: bool = any(
             0 <= r < nrows and 0 <= c < ncols and self.maze[r][c] != CellType.WALL
@@ -222,14 +254,32 @@ class BasicMaze:
         if not valid_goal_neighbor_exists:
             raise ValueError("Goal cell must have at least one accessible neighboring cell.")
 
+    @staticmethod
+    def render_maze_figure(maze_ID: int, start_cell_id:int = 0) -> None:
+        """
+        Render a maze from maze_definitions.py.
 
-    def load_maze_from_file(self, ID: int, file_path: str):
-        """
-        Load a maze from a file and set it as the current maze.
         Args:
-            ID: Unique identifier for the maze.
-            file_path: Path to the file containing the maze data.
+            maze_ID: Unique identifier for the maze.
+            start_cell_id: Index of the start cell to use from the maze's start cells.
+
+        Raises:
+            ValueError: If maze_ID or start_cell_id are out of valid range.
         """
-        pass
+        if maze_ID < 1 or maze_ID > 27:
+            raise ValueError("Maze ID must be between 1 and 27.")
+        if start_cell_id < 0 or start_cell_id >= len(mazes[f"maze_{maze_ID:02d}"]['start_cells']):
+            raise ValueError(f"Invalid start cell ID {start_cell_id} for maze {maze_ID}.")
+        maze_id = maze_ID
+        maze_name = f"maze_{maze_id:02d}"
+        maze_info = mazes[maze_name]
+        maze_array = maze_info['maze']
+        start_cells = maze_info['start_cells']
+        start_cell = start_cells[start_cell_id]
+        goal_cell = maze_info['goal_cell']
+
+        maze = BasicMaze(maze=maze_array, start_cell=start_cell, goal_cell=goal_cell, maze_ID=maze_id)
+        maze.render()
+        plt.show()
         
         

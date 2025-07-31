@@ -6,9 +6,27 @@ from enums.noise_mode import NoiseMode
 from training.train_script import ExperimentResult
 from training.experiment import Experiment
 import optuna
+from maze.maze_scheduler import MazeScheduler
+import retry
 
 
 class HyperparameterScheduler:
+    """
+    Schedules and optimizes hyperparameters for RL agents using various optimization strategies.
+
+    Supports Optuna-based optimization (and placeholders for grid/random search).
+    Handles agent-specific hyperparameter ranges and noise settings.
+
+    Attributes:
+        optimization_type: Type of optimization (e.g., OPTUNA, GRID_SEARCH).
+        agent_type: Which agent to optimize (Q_LEARNING, BAYESIAN_Q_LEARNING, etc.).
+        noise_mode: Noise mode for NoisyAgent (PERCEPTUAL, NEURAL, BOTH, NONE).
+        opt_score_metric: ScoreMetric to optimize (e.g., MAX_REWARD).
+        n_trials: Number of optimization trials.
+        seed: Random seed for reproducibility.
+        hyperparameter_ranges: Dict of hyperparameter search ranges (set by _setup_hyperparam_ranges).
+    """
+
     def __init__(self,
                 optimization_type:HyperparamOptType = HyperparamOptType.OPTUNA,
                 agent_type: AgentType = AgentType.BAYESIAN_Q_LEARNING,
@@ -19,10 +37,17 @@ class HyperparameterScheduler:
                 ):
         """
         Initialize the hyperparameter scheduler.
+
         Args:
-            optimization_type: Type of optimization to use (e.g., "grid_search", "random_search").
+            optimization_type: Type of optimization to use (e.g., OPTUNA, GRID_SEARCH).
             agent_type: Type of agent for which to optimize hyperparameters.
-            hyperparameter_ranges: Dictionary defining the ranges for each hyperparameter.
+            noise_mode: Noise mode for NoisyAgent (PERCEPTUAL, NEURAL, BOTH, NONE).
+            opt_score_metric: ScoreMetric to optimize (e.g., MAX_REWARD).
+            n_trials: Number of optimization trials.
+            random_seed: Seed for reproducibility.
+
+        Raises:
+            ValueError: If noise_mode is set for a non-noisy agent.
         """
         self.optimization_type = optimization_type
         self.agent_type = agent_type
@@ -35,6 +60,9 @@ class HyperparameterScheduler:
         self.seed = random_seed  # Seed for reproducibility
 
     def _setup_hyperparam_ranges(self):
+        """
+        Set up the hyperparameter search ranges for the selected agent type.
+        """
         if self.agent_type == AgentType.Q_LEARNING:
             self.hyperparameter_ranges: dict = {
                 "alpha": (0.01, 0.1),
@@ -44,13 +72,12 @@ class HyperparameterScheduler:
 
         elif self.agent_type == AgentType.BAYESIAN_Q_LEARNING:
             self.hyperparameter_ranges: dict = {
-                    "alpha": (0.01, 0.1),
-                    "gamma": (0.9, 0.99),
-                    "epsilon": (0.1, 0.5),
-                    "mu_init": (0.0, 1.0),
-                    "sigma_sq_init": (0.1, 2.0),
-                    "obs_noise_variance": (0.01, 0.5)
-                }
+                "gamma": (0.9, 0.99),
+                "epsilon": (0.1, 0.5),
+                "mu_init": (0.0, 1.0),
+                "sigma_sq_init": (0.1, 2.0),
+                "obs_noise_variance": (0.01, 0.5)
+            }
 
         elif self.agent_type == AgentType.CURIOUS_AGENT:
             self.hyperparameter_ranges: dict = {
@@ -60,14 +87,12 @@ class HyperparameterScheduler:
                 "sigma_sq_init": (0.1, 2.0),
                 "obs_noise_variance": (0.01, 0.5),
                 "curiosity_init": (0.1, 1.0),
-                "alpha_C": (0.01, 0.1),
-                "surprise_weight": (1e-5, 1.0),
-                "novelty_weight": (1e-5, 1.0),
-                "usefulness_weight": (1e-5, 1.0),
-                "uncertainty_weight": (1e-5, 1.0),
-                "beta_T": (0.01, 0.1),
-                "beta_U": (0.01, 0.1),
-                "beta_N": (0.01, 0.1)
+                "alpha_C": (0.5, 0.99),
+                "surprise_weight": (0.01, 1.0),
+                "novelty_weight": (0.01, 1.0),
+                "usefulness_weight": (0.01, 1.0),
+                "uncertainty_weight": (0.01, 1.0),
+                "alpha_tau": (0.01, 1.0)
             }
 
         elif self.agent_type == AgentType.NOISY_AGENT:
@@ -79,7 +104,7 @@ class HyperparameterScheduler:
                 "mu_init": (0.0, 1.0),
                 "sigma_sq_init": (0.1, 2.0),
                 "obs_noise_variance": (0.01, 0.5),
-                "k_pn": (0.1, 1.0),
+                "k_pn": (0.01, 0.5),
                 "sigma_nn": (0.1, 1.0),
                 "noise_mode": self.noise_mode
             }
@@ -96,18 +121,20 @@ class HyperparameterScheduler:
         else:
             raise ValueError(f"Unsupported agent type: {self.agent_type}")
     
+    @retry.retry(tries=3)
     def _objective(self, trial: optuna.Trial) -> float:
         """
         Objective function for hyperparameter optimization.
+
         Args:
             trial: A trial object from the optimization library.
+
         Returns:
             Score metric value based on the agent's performance.
         """
         # Extract hyperparameters from the trial
         if self.agent_type == AgentType.BAYESIAN_Q_LEARNING:
             hyperparameters = {
-                "alpha": trial.suggest_float("alpha", *self.hyperparameter_ranges["alpha"]),
                 "gamma": trial.suggest_float("gamma", *self.hyperparameter_ranges["gamma"]),
                 "epsilon": trial.suggest_float("epsilon", *self.hyperparameter_ranges["epsilon"]),
                 "mu_init": trial.suggest_float("mu_init", *self.hyperparameter_ranges["mu_init"]),
@@ -132,18 +159,19 @@ class HyperparameterScheduler:
                 "surprise_weight": trial.suggest_float("surprise_weight", *self.hyperparameter_ranges["surprise_weight"]),
                 "novelty_weight": trial.suggest_float("novelty_weight", *self.hyperparameter_ranges["novelty_weight"]),
                 "uncertainty_weight": trial.suggest_float("uncertainty_weight", *self.hyperparameter_ranges["uncertainty_weight"]),
-                "beta_T": trial.suggest_float("beta_T", *self.hyperparameter_ranges["beta_T"]),
-                "beta_U": trial.suggest_float("beta_U", *self.hyperparameter_ranges["beta_U"]),
-                "beta_N": trial.suggest_float("beta_N", *self.hyperparameter_ranges["beta_N"])
+                "usefulness_weight": trial.suggest_float("usefulness_weight", *self.hyperparameter_ranges["usefulness_weight"]),
+                "alpha_tau": trial.suggest_float("alpha_tau", *self.hyperparameter_ranges["alpha_tau"])
             }
-            usefulness_weight = 1.0 - hyperparameters["surprise_weight"] - hyperparameters["novelty_weight"] - hyperparameters["uncertainty_weight"]
-            if usefulness_weight < self.hyperparameter_ranges["usefulness_weight"][0] or usefulness_weight > self.hyperparameter_ranges["usefulness_weight"][1]:
-                raise optuna.exceptions.TrialPruned("Sum of weights exceeded 1 or resulted in out-of-range usefulness_weight.")
-            hyperparameters["usefulness_weight"] = usefulness_weight
 
 
         elif self.agent_type == AgentType.NOISY_AGENT:
             hyperparameters = {
+                # Optimized Hyperparameters from Bayesian Q-Learning, which can be used and set here for optimization
+                #"gamma": 0.9614119708167211,
+                #"epsilon": 0.13044035930570644,
+                #"mu_init": 0.5864763204375096,
+                #"sigma_sq_init": 1.7040201847402174,
+                #"obs_noise_variance": 0.06525897001368647,
                 "gamma": trial.suggest_float("gamma", *self.hyperparameter_ranges["gamma"]),
                 "epsilon": trial.suggest_float("epsilon", *self.hyperparameter_ranges["epsilon"]),
                 "mu_init": trial.suggest_float("mu_init", *self.hyperparameter_ranges["mu_init"]),
@@ -164,7 +192,8 @@ class HyperparameterScheduler:
             }
 
         # Run the experiment with the current hyperparameters
-        experiment = Experiment(agent_type=self.agent_type, hyperparameters=Hyperparameter(**hyperparameters))
+        maze_scheduler = MazeScheduler(first=26, last=27, trials_maze=200)
+        experiment = Experiment(agent_type=self.agent_type, hyperparameters=Hyperparameter(**hyperparameters), maze_scheduler=maze_scheduler, save_results=False)
         result:ExperimentResult = experiment.run_experiment()
 
         # Return the score metric based on the optimization type
@@ -173,6 +202,12 @@ class HyperparameterScheduler:
     def _run_optuna(self, n_trials: int = 100) -> tuple:
         """
         Executes hyperparameter optimization using Optuna.
+
+        Args:
+            n_trials: Number of optimization trials.
+
+        Returns:
+            Tuple of (best_params, best_value) from the study.
         """
         print("\n" + "="*80)
         print(f"Starting Optuna Optimization for '{self.agent_type}' (maximizing '{self.opt_score_metric}')...")
@@ -195,6 +230,13 @@ class HyperparameterScheduler:
     def start_optimization(self) -> tuple:
         """
         Starts the hyperparameter optimization process based on the specified optimization type.
+
+        Returns:
+            Tuple of (best_params, best_value) for the chosen optimization method.
+
+        Raises:
+            NotImplementedError: If the selected optimization type is not implemented.
+            ValueError: If the optimization type is unsupported.
         """
         self._setup_hyperparam_ranges()
 

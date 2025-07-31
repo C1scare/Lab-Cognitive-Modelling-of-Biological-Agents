@@ -4,19 +4,23 @@ from typing import Tuple, Sequence
 from maze.basic_maze import Action
 from agents.base_agent import BaseAgent
 from training.hyperparameter import Hyperparameter
-from maze.basic_maze import BasicMaze
 
 
 class BayesianQLearningAgent(BaseAgent):
     """
-    A Bayesian Q-learning agent for grid-based environments like BasicMaze.
-    
+    A Bayesian Q-learning agent for grid-based environments.
+
+    This agent maintains a Gaussian distribution (mean and variance) for each Q-value,
+    allowing for uncertainty-aware exploration using Thompson Sampling and Bayesian updates.
+
     Attributes:
-        q_table: Q-values for each state-action pair.
-        alpha: Learning rate.
-        gamma: Discount factor.
+        q_dist_table: 4D numpy array storing [mean, variance] for each (state, action) pair.
+        alpha: Learning rate (from hyperparameters, may not be used directly).
+        gamma: Discount factor for future rewards.
         epsilon: Exploration rate for ε-greedy policy.
         action_space: List of possible actions.
+        tau_obs: Precision (inverse variance) of the Bellman target.
+        seed: Random seed for reproducibility.
     """
 
     def __init__(
@@ -32,18 +36,19 @@ class BayesianQLearningAgent(BaseAgent):
         )
     ) -> None:
         """
-        Initialize the Bayesian Q-learning agent with an empty Q-table.
+        Initialize the Bayesian Q-learning agent.
         
         Args:
             maze_shape: Dimensions of the maze grid.
             action_space: List of possible actions (e.g., UP, DOWN, etc.).
-            gamma: Discount factor for future rewards.
-            epsilon: Initial exploration rate.
-            mu_init (float): Initial mean for the Gaussian Q-value distributions.
-            sigma_sq_init (float): Initial variance for the Gaussian Q-value distributions.
-                                   Should be relatively high to encourage exploration.
-            obs_noise_variance (float): Assumed variance of the Bellman target 'y'.
-                                        A smaller value means higher confidence in each new target.
+            hyperparameters: Hyperparameter object with the following attributes:
+                - gamma: Discount factor for future rewards.
+                - epsilon: Initial exploration rate.
+                - mu_init: Initial mean for the Gaussian Q-value distributions.
+                - sigma_sq_init: Initial variance for the Gaussian Q-value distributions.
+                - obs_noise_variance: Assumed variance of the Bellman target 'y'.
+        Raises:
+            ValueError: If any required hyperparameter is missing or invalid.
         """
         if(hyperparameters.gamma is None or
            hyperparameters.epsilon is None or
@@ -90,6 +95,20 @@ class BayesianQLearningAgent(BaseAgent):
             for action in range(len(self.action_space))
         ])
         return Action(np.argmax(sampled_q_values))
+    
+    def exploit_action(self, state: Tuple[int, int]) -> Action:
+        """
+        Selects the action with the highest mean Q-value for the given state.
+
+        Args:
+            state (Tuple[int, int]): The current state of the agent.
+
+        Returns:
+            Action: The action with the highest mean Q-value.
+        """
+        row, col = state
+        action_id = np.argmax(self.q_dist_table[row, col, :, 0])
+        return Action(action_id)
 
     def choose_action(self, state: Tuple[int, int]) -> Action:
         """
@@ -102,8 +121,9 @@ class BayesianQLearningAgent(BaseAgent):
             An Action selected either randomly or greedily.
         """
         if random.random() < self.epsilon:
-            return random.choice(self.action_space)
-        return self.thompson_sample_action(state)
+            random_step = random.choice(self.action_space)
+            return random_step
+        return self.thompson_sample_action(state) if random.random() < 0.5 else self.exploit_action(state)
 
     def calculate_bellman_target(self,
                               state: Tuple[int, int],
@@ -173,7 +193,7 @@ class BayesianQLearningAgent(BaseAgent):
 
         # Update the distribution parameters
         self.q_dist_table[row, col, action_id, 0] = new_mu_sa
-        self.q_dist_table[row, col, action_id, 1] = new_sigma_sq_sa
+        self.q_dist_table[row, col, action_id, 1] = tau_sa_prior * self.tau_obs * new_sigma_sq_sa
     
 
     def learn(
@@ -230,24 +250,3 @@ class BayesianQLearningAgent(BaseAgent):
         row, col = state
         action_id = action.value
         return self.q_dist_table[row, col, action_id, 0], self.q_dist_table[row, col, action_id, 1]
-    
-    def transform_q_dist_map(self, maze:BasicMaze, variance: bool=False) -> dict[Tuple[Tuple[int, int], Tuple[int, int]], float]:
-        """
-        Transform the Q-value means into a dictionary mapping (state, action) pairs to their mean Q-values.
-        
-        Returns:
-            dict[Tuple[Tuple[int, int], Tuple[int, int]], float]: Mean Q-values for each (state, action) pair.
-        """
-        q_dist_map = {}
-        for x in range(self.q_dist_table.shape[0]):
-            for y in range(self.q_dist_table.shape[1]):
-                state = (x, y)
-                for action in self.action_space:
-                    delta = maze.actions[action]
-                    next_x = max(0, min(self.q_dist_table.shape[0] - 1, x + delta[0]))
-                    next_y = max(0, min(self.q_dist_table.shape[1] - 1, y + delta[1]))
-                    next_state = (next_x, next_y)
-                    q_mean_value:float = self.q_dist_table[x, y, action.value, 0 if not variance else 1]
-                    q_dist_map[(state, next_state)] = q_mean_value
-        return q_dist_map
-
